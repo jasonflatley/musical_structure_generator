@@ -287,9 +287,6 @@ class pitch:
         
         return find_note_name_dict[note_num % 12]
             
-
-
-        
     
     def __init__(self, root_note_num, root_note_name, interval_from_root):
         """
@@ -303,7 +300,13 @@ class pitch:
         count_flat = root_note_name.count('es')
         
         if count_sharp == 0 and count_flat == 0:
-            find_note_name[]
+            try:
+                self.find_note_name[root_note_num, 'neutral']
+            except:
+                raise ValueError('Invalid pitch parameters')
+        elif count_sharp == 1 and count_flat == 0:
+            try:
+                self.find_note_name
         
         
         # Initialize attributes
@@ -311,6 +314,8 @@ class pitch:
         self._root_note_name = root_note_name
         self._interval_from_root = interval_from_root
         self._note_name = self.get_note_name(self)
+        
+        self._dereferenced_pitch = asdf
         
         
     def get_note_name(self):
@@ -344,4 +349,9 @@ a.count('es')
 
 """
 classes: scale
+map to frequencies
+mirror exercises
+negative harmony 
+scales with tetrachords
+harmonica the quadruple flat 3 is just the #4
 """
