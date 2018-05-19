@@ -68,12 +68,20 @@ class interval:
     """
 
     
-    def __init__(self, interval_name):
+    def __init__(self, interval_name, interval_direction):
         """
         Class to implement musical intervals.
         
         The interval_name paramter is something like p4, a5 or d6 to represent
-        perfect fourths, augmented fifths, diminished sixths and such like
+        perfect fourths, augmented fifths, diminished sixths and such like. We're going 
+        to say there are no double diminished or double augmented intervals for now.
+        
+        The key thing we're trying to capture is the function of the note relative to the harmonic
+        context. So in Gb, for us, a C# can't occur (this would be a double augmented interval)
+        
+        The interval_direction parameter is either '+' or '-' depending on whether you mean
+        a perfect fourth up or down. Everything we do below (with the exception of 
+        interval addition) doesn't depend on the direction.
         
         Perfect interval categories (fundamental plus octave shifted):
             Unison/Octave/Fifteenth: p1, p8, p15, etc. (1 + 7n for n >= 0)      
@@ -96,6 +104,7 @@ class interval:
         self._interval_name = interval_name        
         self._interval_type = self._interval_name[0]
         self._interval_number = int(self._interval_name[1:])
+        self._interval_direciton = interval_direction
         
         # Validate interval_name input
         # Has to be a string with a, d, or p followed by an integer > 1, 
@@ -193,7 +202,8 @@ class interval:
         
     def __add__(self, other):
         """
-        Figure out what happens when we add intervals together. 
+        We need to define rules for adding arbitrary intervals together, including direction.
+        
         
         There are a few cases. We may have to strongly update this logic later.
             perfect + perfect = perfect (unless adding perfect 4ths (up to octave shifts), then it's diminished)
