@@ -65,6 +65,55 @@ letter_names = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
 
 
 
+
+def semitones_to_diasteps(num_semitones):
+    """
+    Take a given number of semitones and translate it into the corresponding
+    type of diatonic interval. If num_semitones < 0, return a descending interval
+    
+    Return a list of all possible intervals
+    
+    Examples:
+    num_semitones = 4 and interval_type = 'p' returns 'p3'
+    num_semitones = 4 and interval_type = 'd' returns 'd4'
+    num_semitones = 4 and interval_type = 'a' gives an error because there is no such thing
+    """
+    
+    # We'll do all of our arithemtic in the positive world, then return the correct direction later
+    raw_num_semitones = abs(num_semitones)
+    
+    if raw_num_semitones < 0:
+        new_direction = '-'
+    elif raw_num_semitones >= 0:
+        new_direction = '+'
+    
+    base_num_semitones = raw_num_semitones % 12
+    octave_offset = raw_num_semitones//12
+    
+    # Store our (possibly multi-valued) results in a list
+    possible_results = []
+
+    # Helper function for processing each of the three cases
+    def process_interval_type_case(interval_type, dictionary_to_use):
+        if base_num_semitones in dictionary_to_use:
+            base_diatonic_interval = dictionary_to_use[base_num_semitones]
+            new_interval_number = int(base_diatonic_interval[1:]) + 7*octave_offset
+            possible_results.append(interval(interval_type + str(new_interval_number) + new_direction))
+        else:
+            pass
+
+    # Process all three cases, appending to the list when necessary                
+    process_interval_type_case('p', num_semitones_to_pure)
+    process_interval_type_case('a', num_semitones_to_augmented)
+    process_interval_type_case('d', num_semitones_to_diminished)
+
+    return possible_results
+
+
+
+
+
+
 class interval:
     """
     This class implements the concept of a musical interval in diatonic Western music
@@ -127,16 +176,17 @@ class interval:
             raise ValueError('Invalid interval name')
             
         # Compute the equivalent diatonic interval name in one octave
-        # We use mod 7 arithemtic, but we start pure sevenths with 7 instead of 0
-        # (since here is no diatonic 'pure 0' relationship)
-        # We also start diminished sevenths with 8 instead of 1
-        # (since there is no 'diminished 1' relationship)
+        # We use mod 7 arithemtic
         # This way, we know that a pure 17th is just a pure third plus two octaves
         self._reduced_interval_number = self._interval_number % 7
+        
+        # We start pure sevenths with 7 instead of 0
+        # (since here is no diatonic 'pure 0' relationship)
+        # We also [etc]
         if self._reduced_interval_number == 0:
             self._reduced_interval_number = 7
-        elif self._reduced_interval_number == 1:
-            self._reduced_interval_number = 8
+        #if self._reduced_interval_number == 1 and self._interval_name != 'p1':
+        #    self._reduced_interval_number = 8
             
         # Form the diatonic name of the reduced interval
         # Also compute the number of half steps in it as base_length
@@ -147,52 +197,7 @@ class interval:
         # Compute how many octaves above the first that our interval lies in
         # So for a pure 17th, _octave_offset = 2
         self._octave_offset = int((self._interval_number - self._reduced_interval_number)/7)
-                 
-    
-    def semitones_to_diasteps(num_semitones):
-        """
-        Take a given number of semitones and translate it into the corresponding
-        type of diatonic interval. If num_semitones < 0, return a descending interval
-        
-        Return a list of all possible intervals
-        
-        Examples:
-        num_semitones = 4 and interval_type = 'p' returns 'p3'
-        num_semitones = 4 and interval_type = 'd' returns 'd4'
-        num_semitones = 4 and interval_type = 'a' gives an error because there is no such thing
-        """
-        
-        # We'll do all of our arithemtic in the positive world, then return the correct direction later
-        raw_num_semitones = abs(num_semitones)
-        
-        if raw_num_semitones < 0:
-            new_direction = '-'
-        elif raw_num_semitones >= 0:
-            new_direction = '+'
-        
-        base_num_semitones = raw_num_semitones % 12
-        octave_offset = raw_num_semitones//12
-        
-        # Store our (possibly multi-valued) results in a list
-        possible_results = []
-
-        # Helper function for processing each of the three cases
-        def process_interval_type_case(interval_type, dictionary_to_use, base_num_semitones, octave_offset, new_direction):
-            if base_num_semitones in dictionary_to_use:
-                base_diatonic_interval = dictionary_to_use[base_num_semitones]
-                new_interval_number = int(base_diatonic_interval[1:]) + 7*octave_offset
-                possible_results.append(interval(interval_type + str(new_interval_number) + new_direction))
-            else:
-                raise ValueError('Invalid interval relationship ' + str(raw_num_semitones) + ' ' + interval_type)
-
-        # Process all three cases, appending to the list when necessary                
-        process_interval_type_case('p', num_semitones_to_pure, base_num_semitones, octave_offset, new_direction)
-        process_interval_type_case('a', num_semitones_to_augmented, base_num_semitones, octave_offset, new_direction)
-        process_interval_type_case('d', num_semitones_to_diminished, base_num_semitones, octave_offset, new_direction)
-
-        return possible_results
-
-    
+                     
     def __len__(self):
         """
         Return the number of semitones in the given interval
@@ -232,13 +237,11 @@ class interval:
         We need to define rules for adding arbitrary intervals together, including direction.
         
         How about this: add the number of semitones and find out what intervals are available
-        and use some rule to decide between temn
+        and use some rule to decide between them
         
-        Strategy:
-            Add the two lengths to get the number of semitones
-            Divide this number into the form reduced_interval_number + 7*octave_offset
-            Figure out what type of interval the result should be
-            Look up reduced_interval_number in the dictionary
+        If self is anything and other is p1+ or p1-, the result is the same type as self
+        If self is a or d
+        
         """
         
         # Add the lengths of the two intervals to get the total number of semitones
@@ -246,29 +249,62 @@ class interval:
         new_num_semitones = self._interval_sign*len(self) + other._interval_sign*len(other)
         
         return semitones_to_diasteps(new_num_semitones)
-        
-          
-        
+    
+    
+    def __sub__(self, other):
+        """
+        Interval subraction is the opposite of interval addition.
+        """
+        return self + other.reverse_direction()
 
 
 
-a = interval('p3+')
-b = interval('p3+')
+
+a = interval('a1+')
+b = interval('p4+')
+a+b
+
+a = interval('p2+')
+b = interval('p2-')
 a+b
 
 
-c = interval('a5+')
-len(c)
 
-"""
-p = pure (used to be perfect)
-d and a are the same
-test reverse direction function
-fix interval arithmetic
-interval regression tests
+# Figure out all of the combinations of a, p, d
+reduced_intervals = ['p1','a1','d2','p2','a2','d3','p3','d4','a3','p4','a4','d5','p5','a5','d6','p6','a6','d7','p7','d8']
+directions = ['+', '-']
+
+results = []
+for first in reduced_intervals:
+    for second in reduced_intervals:
+        for first_direction in directions:
+            for second_direction in directions:
+                addition = interval(first + first_direction) + interval(second + second_direction)
+                result = [first, second, addition]
+                results.append(result)
+
+results = set(results)
 
 
-"""
+
+# can't handle p1 + p7 shoudl be p8, which is p1 + one octave
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
