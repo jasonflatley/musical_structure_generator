@@ -65,6 +65,7 @@ num_semitones_to_diminished = {
 
 
 # Letter names of diatonic notes in order
+# TODO - do we need this still?
 letter_names = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
 
 
@@ -293,8 +294,14 @@ class interval:
 
 
 
-
-
+"""
+These are some representative scale degree lists. A scale degree list tells us how to name the notes
+Like, if we have scale X and note Y, is Y a 4 or a 5? 
+"""
+diatonic_scale_degree_list = [1, 2, 3, 4, 5, 6, 7]
+major_pentatonic_scale_degree_list = [1, 2, 3, 5, 6]
+# diminished
+# scale_in_thirds_scale_degree_list = []
 
 class scale:
     """
@@ -307,7 +314,7 @@ class scale:
     We enter the ionian, melodic minor, and other base scales and tetrachords, and programmatically generate the modes    
     """
 
-    def __init__(self, list_of_interval_strings, continuation_offset):
+    def __init__(self, list_of_interval_strings, continuation_offset, degree_list = diatonic_scale_degree_list):
         """
         We take a list of interval strings and converts it into a list of intervals.
         
@@ -321,6 +328,8 @@ class scale:
             
         continuation_offset is a parameter enabling hyperdiatonic systems
         """
+        
+        self._degree_list = degree_list
         
         # Preserve the string version of all these for later
         self._str_list_of_interval_strings = list_of_interval_strings
@@ -396,6 +405,20 @@ class scale:
                 scale_length= len(interval)
                 
         return scale_length
+    
+    def __add__(self, other):
+        """
+        Need to stick them onto each other and add the degreelist!
+        To add the degree list, we need to do something where we stick them together,
+        but the second one still knows what key we're in. Example, adding major scales
+        with a whole step continuation offset:
+            
+        c, d, e, f, g, a, b, c#, d# e#, f#, g#, a#, b#, c##, d##, etc
+        1, 2, 3, 4, 5, 6, 7, [1, 2, 3, 4, 5, 6, 7], etc
+        
+        then later we can compute the degree list if we're viewing all of this
+        with respect to c and respell the pitches!
+        """
 
 
     
@@ -410,89 +433,53 @@ class scale:
 
 
 
-# Major scale harmony
-major_scale = scale(['p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+')
+# Major diatonic scale and modes
+ionian_scale = scale(['p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+')
 dorian_scale = major_scale.get_mode(2)
 phrygian_scale = major_scale.get_mode(3)
-lydian_scale = major_scale.get_mode(4) = p2, p2, p2, d2, p2, p2, d2
+lydian_scale = major_scale.get_mode(4)
 mixolydian_scale = major_scale.get_mode(5)
 aeolian_scale = major_scale.get_mode(6)
 locrian_scale = major_scale.get_mode(7)
 
-# Melodic minor harmony
+# Major pentatonic scale and modes
+major_pentatonic_scale = scale(['p2+', 'p2+', 'd3+', 'p2+'], 'd3+', [1, 2, 3, 5, 6])
+# second mode
+"""
+permute list once
+[2, 3, 5, 6, 1]
+then 
+[1, 2, 4, 5, 7]
+
+
+again
+[3, 5, 6, 1, 2]
+then
+[1, 3, 4, 6, 7]
+
+what if it's nonmonotonic, like [1, 2, 5, 3, 4, 6] = c, d, g, e, f, a [...C, D, ...]
+permute once
+[2, 5, 3, 4, 6, 1] -> [d, g, e, f, a, c] -> 
+[1, 4, 2, 3, 5, 7]
+
+what if it's hyperdiatonic nonconsecutive like 
+[1, 2, 3, 4, #5, b7, (then in db)] -> c, d, e, f, g#, bb, | , db, eb, f, gb, a, cb
+
+to get the a of the b or the [equivalent] c of the d, just take a harmonica in the 
+key of the e and overblow the f
+
+"""
+
+# Melodic minor diatonic harmony
 melodic_minor_scale = scale(['p2+', 'd2+', 'p2+', 'p2+', 'p2+', 'p2+'], 'd2+')
 melodic_minor_scale
 
 # Tetrachords
 lydian_tetrachord = scale(['p2+', 'p2+', 'd2+'])
 
-"""
-ok, issue for converting to absolute representation: 
-when we dereference each interval addition thing, we need to amke sure we're obeying
-the diatonic pitch order. Like, we know the fourth of a lydian scale is raised,
-so we shoudl choose that interval, and the reason is because it has to have 
-that letter name! 
-
-Maybe do a reference computation in C major in the scale class to do this 
-computation--that tells us what letter name we're on, and shoudl result in no
-loss of generality
-
-Maybe a really simple specailized impoementation of pitch here just to keep
-track of where we are on the diatonic spectrum
-
-Like, something like [c0, 3] for c0 triple sharp
-
-Have later pitch properties inherit from this?
-
-Aaaah but what about scales that are not do re mi?
-
-Ok--a simple scale class for a do re mi scale, then generalize lateR?
-
-need a function for C# lydian: C#, D#, E#, F##, G#, ...
-F## = G, but it has to be "Some kind of F"
-curr_pitch_is_some_kind_of_ref_pitch(current_pitch, reference_pitch)
-
-ok, look at the lydian thing up there. d2 is still correct in relative, but
-in absolute, it needs to be p1, p2, p3, a4, p5, p6, p7, p8.
-Is there some interval arithmetic we can do to make sure we're "on the next pitch?"
-TO make sure p1, p2, p3, d5, p5, p6, p7 is not correct? Yes! We need just hte numbers!
-We always choose the interval that has the next number in it.
-
-Now is there a mathematical way to check that it's a do-re-mi scale? 
-Yes! try to construct the absolute, but you can't find the right numbers!
-
-STress test on extreme scales like
-c des e f g aes b 
-c des eeses f ges aeses beseses c
-No, any 7-note scale with pitches within an octave you can do it with enough accidentals (assuming monotonic)
-
-what about pentatonic scales, tetrachords, super sparse scales
 
 
 
-"""
-
-
-
-
-def add_one_scale_degree(starting_interval, interval_to_add):
-    """
-    One way of dereferencing multivalued interval addition.
-    In diatonic harmony, for absolute representation, each scale degree needs to have _interval_number one greater
-    than the previous one. This function adds the next scale degree by looking for such a number
-    """
-
-    list_of_results = starting_interval + interval_to_add
-    
-    # Iterate over the possible results of the addition
-    # Pick the interval from the list that has the next scale degree number if possible
-    # The + 1 down there means "take the next scale degree"
-    for element in list_of_results:
-        if element._interval_number == starting_interval._interval_number + 1:
-            return element
-        
-    # If we haven't found a match, it's an error
-    raise ValueError('What you are trying to do is impossible.')
     
 
 
@@ -507,8 +494,30 @@ def absolute_scale_repr(scale):
         
     and make it into absolute representation:
         
-        asdf
+        [p2+, p3+, p4+, p5+, p6+, p7+]
+        
+    The absolute representation is not a scale, it's just a list of intervals such that
+    the interval numbers start at 2 and count up by one
     """
+    
+    def add_one_scale_degree(starting_interval, interval_to_add):
+        """
+        Helper function, which represents one way of dereferencing multivalued interval addition.
+        In diatonic harmony, for absolute representation, each scale degree needs to have _interval_number one greater
+        than the previous one. This function adds the next scale degree by looking for such a number
+        """
+    
+        list_of_results = starting_interval + interval_to_add
+        
+        # Iterate over the possible results of the addition
+        # Pick the interval from the list that has the next scale degree number if possible
+        # The + 1 down there means "take the next scale degree"
+        for element in list_of_results:
+            if element._interval_number == starting_interval._interval_number + 1:
+                return element
+            
+        # If we haven't found a match, it's an error
+        raise ValueError('What you are trying to do is impossible.')
     
     # Start out with a unison
     current_interval = interval('p1+')
@@ -523,24 +532,10 @@ def absolute_scale_repr(scale):
 
 
 
-lydian_scale = major_scale.get_mode(4)
+lydian_scale = major_scale.get_mode(1)
 lydian_scale
 absolute_scale_repr(lydian_scale)
 
-
-
-
-
-full_interval_list = major_scale._str_list_of_interval_strings + [major_scale._str_continuation_offset]
-full_interval_list 
-
-mode_number = 4
-
-new_mode
-new_mode[0:-1]
-new_mode[-1]
-asdf = scale(new_mode[0:-1], new_mode[-1])
-asdf
 
 
 
