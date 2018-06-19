@@ -294,25 +294,31 @@ class interval:
 
 
 
-"""
-These are some representative scale degree lists. A scale degree list tells us how to name the notes
-Like, if we have scale X and note Y, is Y a 4 or a 5? 
-"""
-diatonic_scale_degree_list = [1, 2, 3, 4, 5, 6, 7]
-major_pentatonic_scale_degree_list = [1, 2, 3, 5, 6]
-# diminished
-# scale_in_thirds_scale_degree_list = []
+
 
 class scale:
     """
-    A scale is an ordered list of (ascending or descending) interval strings starting with a unison (or 'p1+' 
-    in our interval notation). Each string represents the distance between successive notes.
+    A scale is an ordered list of (ascending or descending) interval strings relative to an arbitrary root pitch.
+    The first interval represents the distance from the root pitch for the second note, and subsequent intervals 
+    represent the distance to the next pitch in the scale
+    Later we will "render" scales with a given pitch as the root.
+    A scale is assumed to start with the root, so we don't specify a root pitch (see major scale below)
+    Intervals can be ascending or descending
     There's also a continuation offset.
     
-    So we could have major_scale = scale(['p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+')
+    There's also the degree_list which 
+    
+    So we could have ionian_scale = scale([p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+')
     
     We enter the ionian, melodic minor, and other base scales and tetrachords, and programmatically generate the modes    
     """
+    
+    """
+    These are some representative scale degree lists. A scale degree list tells us how to name the notes
+    Like, if we have scale X and note Y, is Y a 4 or a 5? 
+    """
+    diatonic_scale_degree_list = [1, 2, 3, 4, 5, 6, 7]
+    major_pentatonic_scale_degree_list = [1, 2, 3, 5, 6]
 
     def __init__(self, list_of_interval_strings, continuation_offset, degree_list = diatonic_scale_degree_list):
         """
@@ -408,17 +414,110 @@ class scale:
     
     def __add__(self, other):
         """
-        Need to stick them onto each other and add the degreelist!
-        To add the degree list, we need to do something where we stick them together,
-        but the second one still knows what key we're in. Example, adding major scales
-        with a whole step continuation offset:
-            
+        Adding two scales means sticking the intervals of other after the intervals of self via the continuation_offset
+        We also need to combine the two degree lists.
+        Make sure the enharmonic spellings are consistent when we take absolute representation
+        
+        
+        Take tetrachords for an example
+        
+        lydian_tetrachord = scale(['p2+', 'p2+', 'd2+'], 'p2+', [1, 2, 3, 4])
+                            c        d      e      f       g
+        lydian_tetrachord * 3  should be scale(['p2+', p2+', 'd2+', 'p2+', 'p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+', 'd2+'], 'p2+')
+                                     c           d      e      f     g      a       b      c      d      e    f#       g       a
+                                     [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        or in other words
+        
+        [c, d, e, f]*3 should be [c, d, e, f, g, a, b, c, d, e, f#, g]
+        
+        so we need to basically repeat the 4 intervals 3 times
+        and then combine the degree lists. 
+        
+        Ok, so what if the scale is more than 7 notes?
+        
+        big_scale = scale(['p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+', 'p2+', 'p2+', 'd3+'], 'p2+', [1, 2, 3, 4, 5, 6, 7, 8, 9, 11])
+        so like       c,    d,      e,    f,     g,     a,     b,     c#,    d#,    f#,      g#
+        
+        
+        
         c, d, e, f, g, a, b, c#, d# e#, f#, g#, a#, b#, c##, d##, etc
         1, 2, 3, 4, 5, 6, 7, [1, 2, 3, 4, 5, 6, 7], etc
         
-        then later we can compute the degree list if we're viewing all of this
-        with respect to c and respell the pitches!
         """
+        
+        # Combine all the lists of interval strings together to make a new list of interval strings
+        new_interval_list = self._str_list_of_interval_strings + [self._str_continuation_offset] + other._str_list_of_interval_strings
+
+        # The new continuation_offset is from other
+        new_continuation_offset = other._str_continuation_offset
+        
+        # Make the new degree_list
+        shift_distance = self._degree_list[-1]
+        new_degree_list = self._degree_list + [x + shift_distance for x in other._degree_list]
+        
+        return scale(new_interval_list, new_continuation_offset, new_degree_list)
+
+lydian_tetrachord = scale(['p2+', 'p2+', 'd2+'], 'p2+', [1, 2, 3, 4])
+
+new_thing = lydian_tetrachord + lydian_tetrachord
+new_thing._degree_list
+
+
+#scale get item
+#scale "iterate 100 times"
+
+lydian_tetrachord._degree_list + [x + 7 for x in diatonic_scale_degree_list]        
+type(diatonic_scale_degree_list[-1])
+      
+        
+    def absolute_scale_repr(scale):
+        """
+        Take relative scale representation:
+            
+            major_scale = scale(['p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+')
+            
+        and make it into absolute representation:
+            
+            [p2+, p3+, p4+, p5+, p6+, p7+]
+            
+        The absolute representation is not a scale, it's just a list of intervals such that
+        the interval numbers follow the degree list
+        
+        We chop off the initial 1 from the degree list because we don't need it
+        """
+        
+        # Start out with a unison
+        current_interval = interval('p1+')
+        
+        # Initialize an absolute scale to return
+        absolute_scale_to_return = [current_interval]
+        
+        # Chop off the 1 from the degree list
+        chopped_degree_list = scale._degree_list[1:]
+        
+        # Loop over degree_list, do the interval addition, and pick the appropriate name for the new interval
+        for step in range(len(scale._scale_steps)):
+    
+            list_of_addition_results = absolute_scale_to_return[-1] + scale._scale_steps[step]
+            
+            # Iterate over the possible results of the addition
+            # Pick the interval from the list that has the next degree in the degree list
+            found_indicator = 0
+            for element in list_of_addition_results:
+                
+                if element._interval_number == chopped_degree_list[step]:
+                    found_indicator = 1
+                    element_to_append = element
+                
+            # If we found a match, pick it. If not, what we're trying to do is impossible, so raise an error.
+            if found_indicator == 1:
+                absolute_scale_to_return += [element_to_append]
+            elif found_indicator == 0:
+                    # If we haven't found a match, it's an error
+                    print(absolute_scale_to_return)
+                    raise ValueError('No interval exists that represents the next scale degree.')
+    
+        return absolute_scale_to_return 
 
 
     
@@ -433,19 +532,44 @@ class scale:
 
 
 
+
+
+
+
+
+
 # Major diatonic scale and modes
 ionian_scale = scale(['p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+')
-dorian_scale = major_scale.get_mode(2)
-phrygian_scale = major_scale.get_mode(3)
-lydian_scale = major_scale.get_mode(4)
-mixolydian_scale = major_scale.get_mode(5)
-aeolian_scale = major_scale.get_mode(6)
-locrian_scale = major_scale.get_mode(7)
+ionian_scale
+
+
+dorian_scale = ionian_scale.get_mode(2)
+dorian_scale
+
+phrygian_scale = ionian_scale.get_mode(3)
+lydian_scale = ionian_scale.get_mode(4)
+mixolydian_scale = ionian_scale.get_mode(5)
+aeolian_scale = ionian_scale.get_mode(6)
+locrian_scale = ionian_scale.get_mode(7)
 
 # Major pentatonic scale and modes
 major_pentatonic_scale = scale(['p2+', 'p2+', 'd3+', 'p2+'], 'd3+', [1, 2, 3, 5, 6])
-# second mode
+
+
+
+# diminished
+# scale_in_thirds_scale_degree_list = []
+
 """
+[1, 2, 3, 4, 5, 6, 7]
+then
+[2, 3, 4, 5, 6, 7, 1]
+then
+[1, 2, 3, 4, 5, 6, 7]
+
+
+pentatonic
+[1, 2, 3, 5, 6]
 permute list once
 [2, 3, 5, 6, 1]
 then 
@@ -465,6 +589,13 @@ permute once
 what if it's hyperdiatonic nonconsecutive like 
 [1, 2, 3, 4, #5, b7, (then in db)] -> c, d, e, f, g#, bb, | , db, eb, f, gb, a, cb
 
+A hyperscale is just a list of scales? convert to a single scale?
+scale(['p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+') + scale(['p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+')
+different representations that tell the root for each unit?
+for now, we'll say that you can't take a mode of a hyperscale in piece-wise format--you have to first convert it to a full set of intervals
+
+
+ 
 to get the a of the b or the [equivalent] c of the d, just take a harmonica in the 
 key of the e and overblow the f
 
@@ -480,51 +611,17 @@ lydian_tetrachord = scale(['p2+', 'p2+', 'd2+'])
 
 
 
-    
 
 
 
 
 
-def absolute_scale_repr(scale):
-    """
-    Take relative scale representation:
-        
-        major_scale = scale(['p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+')
-        
-    and make it into absolute representation:
-        
-        [p2+, p3+, p4+, p5+, p6+, p7+]
-        
-    The absolute representation is not a scale, it's just a list of intervals such that
-    the interval numbers start at 2 and count up by one
-    """
-    
-    def add_one_scale_degree(starting_interval, interval_to_add):
-        """
-        Helper function, which represents one way of dereferencing multivalued interval addition.
-        In diatonic harmony, for absolute representation, each scale degree needs to have _interval_number one greater
-        than the previous one. This function adds the next scale degree by looking for such a number
-        """
-    
-        list_of_results = starting_interval + interval_to_add
-        
-        # Iterate over the possible results of the addition
-        # Pick the interval from the list that has the next scale degree number if possible
-        # The + 1 down there means "take the next scale degree"
-        for element in list_of_results:
-            if element._interval_number == starting_interval._interval_number + 1:
-                return element
-            
-        # If we haven't found a match, it's an error
-        raise ValueError('What you are trying to do is impossible.')
-    
-    # Start out with a unison
-    current_interval = interval('p1+')
-    
-    for element in scale:
-        current_interval = add_one_scale_degree(current_interval, element)
-        print(current_interval)
+
+melodic_minor_scale = scale(['p2+', 'd2+', 'p2+', 'p2+', 'p2+', 'p2+'], 'd2+')
+absolute_scale_repr(melodic_minor_scale)
+
+asdf = ['p1+', 'p2+', 'd3+', 'p4+', 'p5+', 'p6+', 'p7+']
+
         
 
     
@@ -532,9 +629,6 @@ def absolute_scale_repr(scale):
 
 
 
-lydian_scale = major_scale.get_mode(1)
-lydian_scale
-absolute_scale_repr(lydian_scale)
 
 
 
@@ -543,9 +637,7 @@ absolute_scale_repr(lydian_scale)
 
 
 
-    
-def new_iterated_scale:    
-def scale_widest
+
 
 
 
