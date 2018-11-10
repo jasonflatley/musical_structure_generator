@@ -7,29 +7,71 @@
 
 """
 I like complex, highly structured melodies and harmonies. I also like everything to be
-spelled enharmonically correctly. So I made this package to implement a very general 
-and flexible jazz scale theory that can be used to programmatically generate many different
-pan-diatonic musical structures, such as
+spelled enharmonically correctly. 
 
--basic scales
+So I made this package to implement a very general 
+and flexible jazz scale theory that can be used to programmatically generate many different
+pan-diatonic musical structures derived from things like
+-Basic scales
 -Jacob Collier hyper mega meta ultra lydian scale
--arbitrary chord extensions like #15 or b39
--Vardan Ovsepian mirror exercises
+-Arbitrary chord extensions like #15 or b39
 -Dave Liebman's whole chromatic theory, including synthetic scales
 -Mick Goodrick's system of voice-leading
 -Slonimsky's scales
 -Tonino Miano's whole system
--and much more
+-Hindustani and Carnatic ragas (what of them fits in our Western system)
 
+Once we have these we can use them for
+-Basic diatonic structures such as scales, thirds etc
+-Generating families of lines according to certain shapes
+-Vardan Ovsepian mirror exercises
+-Randomly iterating relevant parts of the above
+-Aydin Esin high-information lines
+-Dave Liebman "use only fourths and minor seconds"
+-Dividing into pitch classes such as {[c, f, e, g], [f#, a#, b, c#], [d, eb, ab, a]}
+-Putting any of these together contrapuntally
+-Negative harmony
+-Modes of limited transposition on a grander scale?
+-Diatonic voice leading like Mick Goodrick
+-Generate diatonic exercise books
+-Do all of this within the compass of a particular voice or instrument
+
+We incorporate rhythmic patterns such as
+-Different time signatures
+-Eric Demaine's rhythmic necklaces
+-Arbitrary accent patterns
+-Many different polyrhythms
+
+We'll be able to do cute tricks like
+-Crazy computations in triple flats
+-Howard Levy "the 2 of the 5 is the 3 of the 2"
+-Something dan tepfer
+    -visualize complicated chromatic structures while they play?
+    -translate pictoral or other input into structured lines, relative to some scale? (like nok)
+-Take numeric input (like from transcendental numbers) and hear it
 
 We strive for high generality here, but note that enharmonic naming conventions are relative
 to the ionian scale (white keys on the piano), so we can't treat all 12 pitches equally
 for the purposes of notation (though musically we can)
 
+TODO:
+-input validation on all of these...
+-implement compute_interest and compute how diatonic something is
+-figure out why __repr__ is not working
+-do melodic minor and tetrachords
+-when we're doing scale output, we need to be able to output the chord!
+-add a class for pitch
+-then a class for note
+-then time sigunature stuff like that eric demaine essay
+-add an option to expand pitches with enclosures
+-hindustani raga stuff?
+-a rendered scale is just a starting note + a scale, then extend that over the whole piano in both direciotns 
 """
 
-import re
 
+
+import re
+import math
 
 # Translates diatonic intervals within one octave into the corresponding number of semi-tones
 # We'll say there's no such thing as d1 or d8
@@ -83,9 +125,7 @@ num_semitones_to_diminished = {
 10: 'd7'}
 
 
-# Letter names of diatonic notes in order
-# TODO - do we need this still?
-letter_names = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+
 
 
 
@@ -320,28 +360,28 @@ class interval:
     
     
     def invert(self, wrt=interval('p8+')):
-        """
-        TODO: make sure we do input validation on all of these...
-        
+        """             
         Invert an interval with respect to (wrt) an octave up, or some other
         (positive or negative) distance that we specify.
         """
-        return wrt + self.reverse_direction()
+        return __sub__(wrt, self)
     
 
 
 
 class scale:
     """
-    A scale is an ordered list of (ascending or descending) interval strings relative to an arbitrary root pitch.
+    A scale is an ordered list of (ascending or descending) intervals, a continuation offset, and a degree list
     
-    The first interval represents the distance from the root pitch for the second note, and subsequent intervals 
-    represent the distance to the next pitch in the scale.
+    The list of intervals starts out with the root, 'p1+' for rooted scales. Subsequent intervals tell how far to
+    go to get to the next note.   
+    
+    But scales can be rootless and not have a 'p1+' in their interval list. For example, we might imagine playing 
+    [d, e, g, a, b] with respect to a C root. Here, the first interval gives the distance from the implicit root.
+    
+    A scale either begins with the root 'p1+' in the degree list or is rootless--the 'p1+' can't appear anywhere else
     
     Later we will "render" scales with a given pitch as the root as a list of the corresponding absolute pitches built off of that root.
-    
-    A scale is NOT assumed to start with (or contain) the root, so for standard scales that begin with the root, you have to
-    specify that they start with a p1+.
     
     Intervals in a scale can be ascending or descending, so a scale need not be monotonically increasing.
     
@@ -350,48 +390,29 @@ class scale:
     c d e f g a b. If we want to continue to the next octave... continuation offset
     But wholestepp...   which allows us to capture scales that are periodic with period greater than 7
     
-    There's also the degree_list which 
+    There's also the degree list which tells us what diatonic function each pitch in the scale has with respect to the root
     
     So we could have ionian_scale = scale(['p1+', 'p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+')
     It doesn't matter if we say 'd2+' or 'a1+'... when we go to render the scale, the interval arithmetic will return a list 
     of all possible notes, and then we will use the degree list cross referenced to [a, b, c, d, e, f, g] to determine
-    the appropriate enharmonic spelling of the pitch.
-    
-    We enter the ionian, melodic minor, and other base scales and tetrachords, and programmatically generate the modes    
-    
-    These are some representative scale degree lists. A scale degree list tells us how to name the notes
-    Like, if we have scale X and note Y, is Y a 4 or a 5? 
-    
-    
-    new_scale = scale(['p1+', 'p2+', 'p2+', 'd2+'], [1, 2, 3, 4], 'p2+')
-    
+    the appropriate enharmonic spelling of the pitch. So in a Bb scale, Eb is the 4 because we have b, c, d, e... it's 
+    not D#, because D# is a 3 in the key of Bb
     """
     
     
-    
-    # Scales can start on pitches other than the root or be rootleses
-    # A pentatonic scale you'd use on a 1 chord, like for C maj7 you use
-    # g pentatonic d e g a b, so like [2, 3, 5, 6, 7]
-    # or like a hindustani raga
-    # or for dave liebman synthetic scales, like C maj (x) Ab maj: (c d e) (f g aes bes) (b c) (des ees f g)
-    
-
     def __init__(self, list_of_interval_strings, continuation_offset, degree_list):
         """
-        We take a list of interval strings and converts it into a list of intervals.
+        The list_of_interval_strings is a list of intervals that we initialize using shorthand notation--
+        so instead of initializing with list_of_interval_strings as [interval('p1+'), interval('p2+'), interval('p2+')],
+        we can initialize using list_of_interval_strings = ['p1+', 'p2+', 'p3+']. The list must either
+        start with 'p1+' (rooted) or not contain 'p1+' (rootless)
         
-        So instead of initializing using 
-    
-            new_scale = [interval('p1+'), interval('p2+'), interval('p2+')] 
-    
-        we can initialize using
+        Similarly, continuation_offset is an interval string. This parameter tells us how to add scales together,
+        which enables hyperdiatonic systems and other things.
         
-            new_scale = scale(['p1+', 'p2+', 'p3+'])
-            
-        continuation_offset is a parameter enabling hyperdiatonic systems
+        The degree list is just a list of numbers.
         """
         
-        # TODO validate datatypes of input
         
         self._degree_list = degree_list
         
@@ -407,13 +428,18 @@ class scale:
         self._scale_steps = converted_interval_strings
         
         # make sure offset is an interval string
-        self._offset = interval(continuation_offset)
-                
-       
+        self._continuation_offset = interval(continuation_offset)
+        
+        # mark rooted or rootless
+        if 'p1+' in list_of_interval_strings:
+            self._rootness = 'rooted'
+        else:
+            self._rootness = 'rootless'
+                     
     
     def __str__(self):
         """
-        TODO: include interval list?
+        String representation
         """
         return '[' + ', '.join(self._str_list_of_interval_strings) + '], ' + self._str_continuation_offset + ', ' + str(self._degree_list)
 
@@ -423,10 +449,11 @@ class scale:
         We have to do a bit of work to return the appropriate string
         """
         return 'scale([' + ', '.join(self._str_list_of_interval_strings) + '], ' + self._str_continuation_offset + ', ' + str(self._degree_list) + ')'
-       
+           
     
     def __getitem__(self, index):
         return self._scale_steps[index]
+    
     
     def get_mode(self, mode_number):
         """
@@ -460,6 +487,7 @@ class scale:
         """
         return len(self._str_list_of_interval_strings) + 1
     
+    
     def scale_span(self):
         """
         Gives the cumulative interval the scale traverses.
@@ -482,9 +510,10 @@ class scale:
                 
         return scale_length
     
+    
     def __add__(self, other):
         """
-        Adding two scales means sticking the intervals of other after the intervals of self via the continuation_offset
+        Adding two scales means sticking the intervals of other after the intervals of self via the continuation offset
         We also need to combine the two degree lists. The intervals we get when we do this will govern the enharmonic 
         spellings of the notes when we render the new scale relative to a pitch.
         
@@ -506,9 +535,16 @@ class scale:
         lyd_tc + lyd_tc != ionian_scale
         
         So the procedure for adding scale_1 + scale_2 is
-        -start with scale_1's degree list 
-        -append scale_1's continuity offset to the list
-        -
+        
+        -start with scale_1's interval string
+        -append scale_1's continuation offset to the list (if scale_2 is rootless, this gives the new "implicit root")
+        -then
+            -if scale_2 is rooted, delete the 'p1+' from scale_2. 
+            -if scale_2 is rootless, don't do anything
+        -append scale_2's remaining interval string
+        -new continuation offset is scale_2's
+        -increment scale_2's degree list by the highest degree in scale_1's degree list and append it to scale_1's degree list
+        -initialize a new scale with these parameters
         
         All of this works exactly the same way for non-monotonic scales and scales with more than 7 notes.
         
@@ -519,130 +555,78 @@ class scale:
         
         Then big_scale + lyd_tc should give us
         
-    x    big_scale + lyd_tc = scale(['p1+', 'p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+', 'p2+', 'p2+', 'd3+'], 'p2+', [1, 2, 3, 4, 5, 6, 7, 8, 9, 11])
-    x    ... so like         c,     d,     e,     f,     g,     a,     b,     c#,    d#,    f#
+         big_scale + lyd_tc = scale(['p1+', 'p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+', 'p2+', 'p2+', 'd3+', 'p2+', 'p2+', 'd2+'], 'p2+', [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13])
+         ... so like                  c,     d,     e,     f,     g,     a,     b,     c#,    d#,    f#     g#     a#     b
+    
+        Everything generalizes naturally to rootless scales, non-monotonic scales, and scales that are not an octave long
         
+        Subtraction isn't really defined--do we ever want to reduce scales somehow?
         
         """
         
-        # Combine all the lists of interval strings together to make a new list of interval strings
-        new_interval_list = self._str_list_of_interval_strings + [self._str_continuation_offset] + other._str_list_of_interval_strings
-
-        # The new continuation_offset is from other
+        # start with scale_1's interval string
+        # append scale_1's continuation offset to the list (if scale_2 is rootless, this gives the new "implicit root")
+        # then
+        #    if scale_2 is rooted, delete the 'p1+' from scale_2. 
+        #    if scale_2 is rootless, don't do anything
+        # append scale_2's remaining interval string
+        if self._rootness == 'rooted':
+            new_interval_list = self._str_list_of_interval_strings + [self._str_continuation_offset] + other._str_list_of_interval_strings[1:]
+        elif self._rootness == 'rootless':
+            new_interval_list = self._str_list_of_interval_strings + [self._str_continuation_offset] + other._str_list_of_interval_strings
+        
+        # new continuation offset is scale_2's
         new_continuation_offset = other._str_continuation_offset
         
-        # Make the new degree_list
-        shift_distance = self._degree_list[-1]
-        new_degree_list = self._degree_list + [x + shift_distance for x in other._degree_list]
+        # increment scale_2's degree list by the highest degree in scale_1's degree list and append it to scale_1's degree list
+        self_highest_degree = max(self._degree_list)
+        scale_2_incremented_degree_list = [x + self_highest_degree for x in other._degree_list]
+        new_degree_list = self._degree_list + scale_2_incremented_degree_list
         
+        # initialize a new scale with these parameters
         return scale(new_interval_list, new_continuation_offset, new_degree_list)
-
-
-# Some common scale degree lists
-diatonic_sc_degs = [1, 2, 3, 4, 5, 6, 7]
-maj_pentatonic_sc_degs = [1, 2, 3, 5, 6]
-tetrachord_sc_degs = [1, 2, 3, 4]
-whole_tone_sc_degs = [1, 2, 3, 4, 5, 6]
-whole_tone_sc = scale(['p1+', 'p2+', 'p2+', 'p2+', 'p2+', 'p2+'], 'p2+')
-
-
-
-
-
-ionian_scale = scale(['p1+', 'p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+', diatonic_sc_degs)
-dorian_scale = ionian_scale.get_mode(2)
-
-
-
-lyd_tc = scale(['p1+', 'p2+', 'p2+', 'd2+'], 'p2+', [1, 2, 3, 4])
-lyd_tc + lyd_tc
-
-#lyd_tc + lyd_tc should be scale(['p1+', 'p2+', 'p2+', 'd2+', 'p2+',         'p2+', 'p2+', 'd2+'], 'p2+', [1, 2, 3, 4, 5, 6, 7, 8])
-                            scale([p1+,  p2+,  p2+,    d2+,    p2+,   p1+,   p2+,    p2+,    d2+], p2+, [1, 2, 3, 4, 5, 6, 7, 8])
-#... so like c d e f g a b c
-
-
-str(ionian_scale)
-
-
-
-##########################
-"""
-The scale part is the list, without the cont offset.
-The cont offset is just for adding/looping around.
-So c major scale is c d e f g a b (half step)
-c up major scale is c d e f g a b (whole step)
-length of both is 7 (7 pitches in pitch class)
-
-
-
-
-scale addition is sticking them together via the continuity offset so...
-c major + c major = c major two octaves, a different, but related scale with the same continuity offset
-c ionian + d dorian = c ionian followed by c dorian (becasue of the interval pattern)
-and c up major + c up major = c d e f g a b c# d# e# f#, ...
-
-c major - d dorian = c major + (-d dorian)
-
-need method to invert scales so that they're... intervals downward!
-
-
-then root is in the middle... so shift root position method?
-
-
-new data structure: expanded scale where we scale it all around the piano
-
-
-"""
-
-
-
-lydian_tetrachord = scale(['p2+', 'p2+', 'd2+'], 'p2+', [1, 2, 3, 4])
-
-new_thing = lydian_tetrachord + lydian_tetrachord
-new_thing._degree_list
-
-
-#scale get item
-#scale "iterate 100 times"
-
-lydian_tetrachord._degree_list + [x + 7 for x in diatonic_scale_degree_list]        
-type(diatonic_scale_degree_list[-1])
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+           
+    
+    def __mul__(self, integer):
+        """
+        Define integer multiplication so we can do things like my_scale*4
+        """
         
+        result = self
+        
+        for i in range(integer - 1):
+            result += self
+            
+        return result
+        
+    
+    def invert(self):
+        """
+        This is not "take a scale c, d, e, f, g and turn it into f, g, a, bb, c", for example--
+        these two scales have the same abstract representation.
+        
+        Instead, it's respelling the intervals so that the most positive interval is at the right. For example,
+        for a lydian scale, ['p1+', 'p2+', 'p2+', 'd2+'] becomes ['p2-', 'p2-', 'd2-'], without the 'p1'
+        ... or something to help us extend scales all along the piano
+        
+                
+        """
+        return
+    
+    
     def absolute_scale_repr(scale):
         """
         Take relative scale representation:
             
-            major_scale = scale(['p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+')
+            ionian_scale = scale(['p1+', 'p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+', diatonic_sc_degs)
             
-        and make it into absolute representation:
+        and return the interval list in absolute representation, where each interval is with respect to the root,
+        and not the neighbor to the left
             
-            [p2+, p3+, p4+, p5+, p6+, p7+]
-            
-        The absolute representation is not a scale, it's just a list of intervals such that
-        the interval numbers follow the degree list
+            ['p1+', 'p2+', 'p3+', 'p4+', 'p5+', 'p6+', 'p7+']
         
-        We chop off the initial 1 from the degree list because we don't need it
         """
-        
+    
         # Start out with a unison
         current_interval = interval('p1+')
         
@@ -676,7 +660,6 @@ type(diatonic_scale_degree_list[-1])
     
         return absolute_scale_to_return 
 
-
     
     def compute_interest(self):
         """
@@ -686,38 +669,19 @@ type(diatonic_scale_degree_list[-1])
         
         # WLOG put it into C representation
         # Compute number of pitches out of 12
-
-
-
-
-
-
-
-
-
-# Major diatonic scale and modes
-ionian_scale = scale(['p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+')
-ionian_scale
-
-
-dorian_scale = ionian_scale.get_mode(2)
-dorian_scale
-
-phrygian_scale = ionian_scale.get_mode(3)
-lydian_scale = ionian_scale.get_mode(4)
-mixolydian_scale = ionian_scale.get_mode(5)
-aeolian_scale = ionian_scale.get_mode(6)
-locrian_scale = ionian_scale.get_mode(7)
-
-# Major pentatonic scale and modes
-major_pentatonic_scale = scale(['p2+', 'p2+', 'd3+', 'p2+'], 'd3+', [1, 2, 3, 5, 6])
-
-
-
-# diminished
-# scale_in_thirds_scale_degree_list = []
+               
+"""
+Methods to add:
+    -modes
+    
+For lines
+    -tensor product--add diatonic or chromatic enclosures, expand all notes (no--this is for lines only)
+    -new data structure: expanded scale where we scale it all around the piano
+"""
 
 """
+Mode notes
+
 [1, 2, 3, 4, 5, 6, 7]
 then
 [2, 3, 4, 5, 6, 7, 1]
@@ -751,18 +715,6 @@ take away (2 - 1) = 1
 permute list twice goes to
 (3)[5, 6, 7, 8, 9] take away (3 - 1) = 2
 (1)[3, 4, 5, 6, 7]
-"""
-
-a = [1, 2, 3, 4]
-# a2 is [2, 3, 4, 8(=1+7)]
-
-
-
-def asdf(l):
-    
-
-
-
 
 
 what if it's nonmonotonic, like [1, 2, 5, 3, 4, 6] = c, d, g, e, f, a [...C, D, ...]
@@ -785,45 +737,64 @@ key of the e and overblow the f
 
 """
 
-# Melodic minor diatonic harmony
-melodic_minor_scale = scale(['p2+', 'd2+', 'p2+', 'p2+', 'p2+', 'p2+'], 'd2+')
-melodic_minor_scale
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##### Test Area
+
+# Church Modes
+diatonic_sc_degs = [1, 2, 3, 4, 5, 6, 7]
+ionian_scale = scale(['p1+', 'p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+', diatonic_sc_degs)
+dorian_scale = ionian_scale.get_mode(2)
+phrygian_scale = ionian_scale.get_mode(3)
+lydian_scale = ionian_scale.get_mode(4)
+mixolydian_scale = ionian_scale.get_mode(5)
+aeolian_scale = ionian_scale.get_mode(6)
+locrian_scale = ionian_scale.get_mode(7)
+
 
 # Tetrachords
-lydian_tetrachord = scale(['p2+', 'p2+', 'd2+'])
+tetrachord_sc_degs = [1, 2, 3, 4]
+lyd_tc = scale(['p1+', 'p2+', 'p2+', 'd2+'], 'p2+', tetrachord_sc_degs)
 
+# Pentatonic
+maj_pentatonic_sc_degs = [1, 2, 3, 5, 6]
+major_pentatonic_scale = scale(['p2+', 'p2+', 'd3+', 'p2+'], 'd3+', [1, 2, 3, 5, 6])
 
+# Whole Tone
+whole_tone_sc_degs = [1, 2, 3, 4, 5, 6]
+whole_tone_sc = scale(['p1+', 'p2+', 'p2+', 'p2+', 'p2+', 'p2+'], 'p2+', whole_tone_sc_degs)
 
+# Melodic Minor
+melodic_minor_scale = scale(['p2+', 'd2+', 'p2+', 'p2+', 'p2+', 'p2+'], 'd2+', [1, 2, 3, 4, 5, 6, 7])
 
-
-
-
-
-
-
-melodic_minor_scale = scale(['p2+', 'd2+', 'p2+', 'p2+', 'p2+', 'p2+'], 'd2+')
-absolute_scale_repr(melodic_minor_scale)
-
-asdf = ['p1+', 'p2+', 'd3+', 'p4+', 'p5+', 'p6+', 'p7+']
-
-        
-
-    
-
-
-
-
-
-
-
-
-
-"""
-Take c = 40
-
-
-"""
-
+# Chromatic (test for mode equality?)
+# Diminished
 
 
 
@@ -871,11 +842,24 @@ class pitch:
     -bis
     -deses'
     
-    To figure out the correct spelling, we first differentiate between root pitches and functional pitches.
+    But we want to capture general enharmonicism. This is why we initialize a pitch as a pair:
+    (diatonic_pitch, chromatic_alteration). The diatonic_pitch is the letter name of the note and 
+    the chromatic_alteration is an integer that represents how sharp or flat the pitch is. For example,
+    middle C could be
+    -(40, 0), corresponding to c'
+    -(39, 1), corresponding to bis
+    -(42, -2), corresponding to deses
+    -(47, -7), corresponding to g hexuple flat 
+    -but not (46, -6), because 46 is f#/gb... need to test for all of this, maybe for invalid ones like this, 
+    dereference it to the nearest valid one
+    
+    To figure out the correct spelling, we first differentiate between root pitches and functional pitches. These
+    different functions are not inherent to the concept of a pitch, rather, they come up when we're rendering
+    scales and other things.
     
     A root pitch gives the tonal center for the current environment. Out of the many possible representations,
     we have to choose exactly one. This allows us to be in the tonal center of Ab or G# to take one example, or
-    in the key of C, B#, or Dbb, to take another example. At this point, though, we're not locked into the "key" 
+    in the key of C, B#, or Dbb, to take another example. At this point, though, we're not locked into the usual "key" 
     of these, becase our system is much more general than this and allows much more complicated stuff.
     
     Functional pitches are pitches that we view as functioning relative to some scale based off of some root pitch.
@@ -989,40 +973,127 @@ class pitch:
         Transpose note_num by the number of semi-tones indicated by interval
         Shit, we need to be able to do interval arithmetic
         """
+        
+    # Letter names of diatonic notes in order
+    diatonic_sequence = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
     
 
 
-a = 'deses'
-a.count('es')
 
 
 
 
 
+
+
+
+
+
+
+
+
+def find_note_name(note_num, direction):
 """
-TODO:
-implement compute_interest and compute how diatonic something is
-figure out why __repr__ is not working
-do melodic minor and tetrachords
-when we're doing scale output, we need to be able to output the chord!
-
-add a class for pitch
-then a class for note
-then time sigunature stuff like that eric demaine essay
-add an option to expand pitches with enclosures
-hindustani raga stuff?
-a rendered scale is just a starting note + a scale, then extend that over the whole piano in both direciotns 
-
-
-To Generate:
-mirror exercises
-negative harmony 
-scales with tetrachords
-harmonica the quadruple flat 3 is just the #4
-modes of limited transposition
-russ ferrante voice leading thing
-random diatonic stuff
-generate stuff that fits into the compass of your instrument/voice, like
-diatonic exercise books
-
+Quick helper function to return a lilypond note name for a given note_num
 """
+
+if direction == 'neutral':
+    find_note_name_dict = {0: 'c',
+                           2: 'd',
+                           4: 'e',
+                           5: 'f',
+                           7: 'g',
+                           9: 'a',
+                           11: 'b'}
+elif direction == 'sharp':
+    find_note_name_dict = {0: 'c',
+                           1: 'cis',
+                           2: 'd',
+                           3: 'dis',
+                           4: 'e',
+                           5: 'f',
+                           6: 'fis',
+                           7: 'g',
+                           8: 'gis',
+                           9: 'a',
+                           10: 'ais',
+                           11: 'b'}
+elif direction == 'flat':
+    find_note_name_dict = {0: 'c',
+                           1: 'des',
+                           2: 'd',
+                           3: 'ees',
+                           4: 'e',
+                           5: 'f',
+                           6: 'ges',
+                           7: 'g',
+                           8: 'aes',
+                           9: 'a',
+                           10: 'bes',
+                           11: 'b'}
+
+
+
+
+
+
+
+
+
+def get_attrs(pitch_num):
+       
+    # get a c-centered pitch number to help our computations
+    cc_pitch_num = pitch_num - 4
+    
+    # do basic computations
+    octave_num = math.floor(cc_pitch_num/12) + 1
+    pitch_freq = 2**((pitch_num-49)/12)*440
+    
+    # get pitch color on piano
+    if cc_pitch_num % 12 in [0, 2, 4, 5, 7, 9, 11]:
+        pitch_color = 'white'
+    elif cc_pitch_num % 12 in [1, 3, 6, 8, 10]:
+        pitch_color = 'black'
+        
+    # get note equivalence classes in the octave below middle c
+    # (where there the lilypond octave modifier is null)
+    
+    
+    # get lilypond octave modifier
+    if octave_num == 3:
+        lilypond_octive_modifier_type = 'none'
+        lilypond_octive_modifier_quantity = 0
+    elif octave_num >= 4:
+        lilypond_octive_modifier_type = "'"
+        lilypond_octive_modifier_quantity = octave_num - 3
+    elif octave_num <=2:
+        lilypond_octive_modifier_type = ","
+        lilypond_octive_modifier_quantity = -1*octave_num + 3
+    
+    lilypond_octave_modifier = lilypond_octive_modifier_type*lilypond_octive_modifier_quantity
+    
+    print(lilypond_octave_modifier)
+    
+
+
+# in terms of cc_pitch_num
+base_lilypond_octaves = {
+35: ["b", "x", "aisis", "ces'", "x"],
+34: ["x", "ais", "x", "bes", "ceses"],
+33: ["a", "x", "gisis", "x", "beses"],
+32: ["x", "gis", "x", "aes", "x"],
+31: ["g", "x", "fisis", "x", "aeses"],
+30: ["x", "fis", "eisis", "ges", "x"],
+29: ["f", "eis", "x", "x", "geses"],
+28: ["e", "x", "disis", "fes", "x"],
+27: ["x", "dis", "x", "ees", "feses"],
+26: ["d", "x", "cisis", "x", "eeses"],
+25: ["x", "cis", "bisis", "des", "x"],
+24: ["c", "bis,", "x", "x", "deses"]}
+
+
+
+
+
+
+
