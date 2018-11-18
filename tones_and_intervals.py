@@ -677,9 +677,7 @@ Methods to add:
 For lines
     -tensor product--add diatonic or chromatic enclosures, expand all notes (no--this is for lines only)
     -new data structure: expanded scale where we scale it all around the piano
-"""
 
-"""
 Mode notes
 
 [1, 2, 3, 4, 5, 6, 7]
@@ -817,7 +815,7 @@ class pitch:
     We'll use middle C as an example.
 
     The underlying unique representation (i.e., no enharmonic or other equivalents) for this note is
-    48, because it's the 48th key from the left on a piano. This representation doesn't care how the pitch
+    40, because it's the 40th key from the left on a piano. This representation doesn't care how the pitch
     is enharmonically spelled.
     
     We use lilypond notation to spell pitches. In this notation, we have
@@ -825,7 +823,7 @@ class pitch:
     -isis means double sharp
     -es means flat
     -eses means double flat
-    -there are no triple or higher accidentals.    
+    -there are no triple or higher accidentals possible in lilypond
     
     Enharmonically, a C could be spelled
     -c
@@ -880,48 +878,10 @@ class pitch:
 
     """
     
-    def find_note_name(note_num, direction):
-        """
-        Quick helper function to return a lilypond note name for a given note_num
-        """
-        
-        if direction == 'neutral':
-            find_note_name_dict = {0: 'c',
-                                   2: 'd',
-                                   4: 'e',
-                                   5: 'f',
-                                   7: 'g',
-                                   9: 'a',
-                                   11: 'b'}
-        elif direction == 'sharp':
-            find_note_name_dict = {0: 'c',
-                                   1: 'cis',
-                                   2: 'd',
-                                   3: 'dis',
-                                   4: 'e',
-                                   5: 'f',
-                                   6: 'fis',
-                                   7: 'g',
-                                   8: 'gis',
-                                   9: 'a',
-                                   10: 'ais',
-                                   11: 'b'}
-        elif direction == 'flat':
-            find_note_name_dict = {0: 'c',
-                                   1: 'des',
-                                   2: 'd',
-                                   3: 'ees',
-                                   4: 'e',
-                                   5: 'f',
-                                   6: 'ges',
-                                   7: 'g',
-                                   8: 'aes',
-                                   9: 'a',
-                                   10: 'bes',
-                                   11: 'b'}
-        
-        return find_note_name_dict[note_num % 12]
+
             
+    # Letter names of diatonic notes in order
+    diatonic_sequence = ['a', 'b', 'c', 'd', 'e', 'f', 'g']     
     
     def __init__(self, root_note_num, root_note_name, interval_from_root):
         """
@@ -942,6 +902,8 @@ class pitch:
         elif count_sharp == 1 and count_flat == 0:
             try:
                 self.find_note_name
+            except:
+                pass
         
         
         # Initialize attributes
@@ -973,9 +935,7 @@ class pitch:
         Transpose note_num by the number of semi-tones indicated by interval
         Shit, we need to be able to do interval arithmetic
         """
-        
-    # Letter names of diatonic notes in order
-    diatonic_sequence = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+   
     
 
 
@@ -992,72 +952,89 @@ class pitch:
 
 
 
-def find_note_name(note_num, direction):
-"""
-Quick helper function to return a lilypond note name for a given note_num
-"""
-
-if direction == 'neutral':
-    find_note_name_dict = {0: 'c',
-                           2: 'd',
-                           4: 'e',
-                           5: 'f',
-                           7: 'g',
-                           9: 'a',
-                           11: 'b'}
-elif direction == 'sharp':
-    find_note_name_dict = {0: 'c',
-                           1: 'cis',
-                           2: 'd',
-                           3: 'dis',
-                           4: 'e',
-                           5: 'f',
-                           6: 'fis',
-                           7: 'g',
-                           8: 'gis',
-                           9: 'a',
-                           10: 'ais',
-                           11: 'b'}
-elif direction == 'flat':
-    find_note_name_dict = {0: 'c',
-                           1: 'des',
-                           2: 'd',
-                           3: 'ees',
-                           4: 'e',
-                           5: 'f',
-                           6: 'ges',
-                           7: 'g',
-                           8: 'aes',
-                           9: 'a',
-                           10: 'bes',
-                           11: 'b'}
 
 
 
 
 
 
-
-
+# in terms of cc_pitch_num
+base_lilypond_octaves = {
+    35: ["b", "x", "aisis", "ces'", "x"],
+    34: ["x", "ais", "x", "bes", "ceses"],
+    33: ["a", "x", "gisis", "x", "beses"],
+    32: ["x", "gis", "x", "aes", "x"],
+    31: ["g", "x", "fisis", "x", "aeses"],
+    30: ["x", "fis", "eisis", "ges", "x"],
+    29: ["f", "eis", "x", "x", "geses"],
+    28: ["e", "x", "disis", "fes", "x"],
+    27: ["x", "dis", "x", "ees", "feses"],
+    26: ["d", "x", "cisis", "x", "eeses"],
+    25: ["x", "cis", "bisis", "des", "x"],
+    24: ["c", "bis,", "x", "x", "deses"]}
 
 def get_attrs(pitch_num):
+    """
+    Get attributes of a c-centered pitch number
+    All pitches will be c-centered for this exercise
+    """
        
-    # get a c-centered pitch number to help our computations
-    cc_pitch_num = pitch_num - 4
+    # get an a-centered pitch number just in case
+    a_centered_pitch_num = pitch_num + 4
     
     # do basic computations
-    octave_num = math.floor(cc_pitch_num/12) + 1
-    pitch_freq = 2**((pitch_num-49)/12)*440
+    octave_num = math.floor(pitch_num/12) + 1
+    pitch_freq = 2**((pitch_num - 45)/12)*440 # in terms of A440
     
     # get pitch color on piano
-    if cc_pitch_num % 12 in [0, 2, 4, 5, 7, 9, 11]:
+    if pitch_num % 12 in [0, 2, 4, 5, 7, 9, 11]:
         pitch_color = 'white'
-    elif cc_pitch_num % 12 in [1, 3, 6, 8, 10]:
+    elif pitch_num % 12 in [1, 3, 6, 8, 10]:
         pitch_color = 'black'
         
     # get note equivalence classes in the octave below middle c
-    # (where there the lilypond octave modifier is null)
+    # (where the lilypond octave modifier is null)
+    equiv_pitch_oct_bel_mc = (pitch_num % 12) + 24
     
+    # get the simplest representations for a given pitch
+    # represent it as locations in the base_lilypond_octaves list
+    # simplest natural representation is always 1, so we don't need that
+    if equiv_pitch_oct_bel_mc = 24:
+        simplest_flat_rep_oct_bel_mc = 4
+        simplest_sharp_rep_oct_bel_mc = 1
+    elif equiv_pitch_oct_bel_mc = 25:
+        simplest_flat_rep_oct_bel_mc = 3
+        simplest_sharp_rep_oct_bel_mc = 1
+    elif equiv_pitch_oct_bel_mc = 26:
+        simplest_flat_rep_oct_bel_mc = 4
+        simplest_sharp_rep_oct_bel_mc = 2
+    elif equiv_pitch_oct_bel_mc = 27:
+        simplest_flat_rep_oct_bel_mc = 3
+        simplest_sharp_rep_oct_bel_mc = 1
+    elif equiv_pitch_oct_bel_mc = 28:
+        simplest_flat_rep_oct_bel_mc = 3
+        simplest_sharp_rep_oct_bel_mc = 2
+    elif equiv_pitch_oct_bel_mc = 29:
+        simplest_flat_rep_oct_bel_mc = 4
+        simplest_sharp_rep_oct_bel_mc = 2
+    elif equiv_pitch_oct_bel_mc = 30:
+        simplest_flat_rep_oct_bel_mc = 3
+        simplest_sharp_rep_oct_bel_mc = 1
+    elif equiv_pitch_oct_bel_mc = 31:
+        simplest_flat_rep_oct_bel_mc = 4
+        simplest_sharp_rep_oct_bel_mc = 2
+    elif equiv_pitch_oct_bel_mc = 32:
+        simplest_flat_rep_oct_bel_mc = 3
+        simplest_sharp_rep_oct_bel_mc = 1
+    elif equiv_pitch_oct_bel_mc = 33:
+        simplest_flat_rep_oct_bel_mc = 4
+        simplest_sharp_rep_oct_bel_mc = 2
+    elif equiv_pitch_oct_bel_mc = 34:
+        simplest_flat_rep_oct_bel_mc = 3
+        simplest_sharp_rep_oct_bel_mc = 1
+    elif equiv_pitch_oct_bel_mc = 35:
+        simplest_flat_rep_oct_bel_mc = 3
+        simplest_sharp_rep_oct_bel_mc = 2
     
     # get lilypond octave modifier
     if octave_num == 3:
@@ -1072,24 +1049,28 @@ def get_attrs(pitch_num):
     
     lilypond_octave_modifier = lilypond_octive_modifier_type*lilypond_octive_modifier_quantity
     
-    print(lilypond_octave_modifier)
+    # put it all together to get a list of possible lilypond spellings
+    lilypond_spellings = []    
+    for item in base_lilypond_octaves[equiv_pitch_oct_bel_mc]:
+        lilypond_spellings.append(item + lilypond_octave_modifier)
+    
+    # dereference "," (octave lower) and "'" (octave higher) when they're together
+    while lilypond_spellings.find("',") > 0:
+        location = lilypond_spellings.find("',") 
+        lilypond_spellingst = lilypond_spellings[0:location] + lilypond_spellings[location + 2:]
+    
+    while lilypond_spellings.find(",'") > 0:
+        location = lilypond_spellings.find(",'") 
+        lilypond_spellings = lilypond_spellings[0:location] + lilypond_spellings[location + 2:]
+
+    return lilypond_spellings
     
 
+get_attrs(50)
 
-# in terms of cc_pitch_num
-base_lilypond_octaves = {
-35: ["b", "x", "aisis", "ces'", "x"],
-34: ["x", "ais", "x", "bes", "ceses"],
-33: ["a", "x", "gisis", "x", "beses"],
-32: ["x", "gis", "x", "aes", "x"],
-31: ["g", "x", "fisis", "x", "aeses"],
-30: ["x", "fis", "eisis", "ges", "x"],
-29: ["f", "eis", "x", "x", "geses"],
-28: ["e", "x", "disis", "fes", "x"],
-27: ["x", "dis", "x", "ees", "feses"],
-26: ["d", "x", "cisis", "x", "eeses"],
-25: ["x", "cis", "bisis", "des", "x"],
-24: ["c", "bis,", "x", "x", "deses"]}
+
+
+
 
 
 
