@@ -1,0 +1,48 @@
+put to music.py graveyard
+
+class harmonica_hole:
+    """
+    Implements a harmonica hole. Harmonicas are built in pitch numbers. We render the pitches later when
+    there's a or harmonic context. Think about it--on hole 1 for a richter tuned C-diatonic harmonica,
+    the 1 overblow is D# or Eb, depending. This is how we need to render it here.
+    """
+    
+    def __init__(self, blow_pitch_num, draw_pitch_num):
+        """
+        Pitch numbers for the blow and draw of this hole. Compute note possibilities
+        """
+        
+        # Initialize the two basic pitches of the hole
+        self._blow_pitch_num = blow_pitch_num
+        self._draw_pitch_num = draw_pitch_num
+        
+        # We limit ourselves to standard overblow technique, and exclude theoretical possibilities
+        # like quarter-tones and severly bent-up overblows. We'll add bends to this list later in 
+        # the initialization process
+        self._practical_pitches = [self._blow_pitch_num, self._draw_pitch_num]
+        
+        # Placeholder for theoretical pitches, including severly bent-up overblows, quartertones, and near-quartertones
+        self._theoretical_pitches = []
+        
+        # All possible pitches, at least according to our model above
+        self._all_possible_pitches = self._practical_pitches + self._all_possible_pitches
+        
+        # Whether the blow is lower or higher than the draw
+        # For example, holes 1-7 of a Richter-tuned diatonic harmonica are forward, 8-10 are backward
+        if self._blow_pitch_num < self._draw_pitch_num:
+            self._hole_direction = 'forward'
+        elif self._blow_pitch_num = self._draw_pitch_num:
+            self._hole_direction = 'neutral'
+        elif self._blow_pitch_num > self._draw_pitch_num:
+            self._hole_direction = 'backward'
+        
+        
+        # Compute practical bends, according to standard overblow technique        
+        # There's a strong reciprocal relationship between forward and backward holes,
+        # but we implement them separately to take into account 
+        # Compute draw bends for forward holes. Any pitch strictly between the two basic pitches counts
+        # We can gliss
+        self._draw_bends = [pitch for pitch in range(self._blow_pitch_num + 1, self._draw_bends_num]
+        self._draw_gliss_range = 
+    
+        # Compute overblows for forward holes. 

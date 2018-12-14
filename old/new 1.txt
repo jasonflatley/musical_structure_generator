@@ -1,0 +1,147 @@
+    # get the simplest representations for a given pitch
+    # represent it as locations in the base_lilypond_octaves list
+    if equiv_pitch_oct_bel_mc = 24:
+        simplest_natural_rep_oct_bel_mc = 1
+        simplest_flat_rep_oct_bel_mc = 5
+        simplest_sharp_rep_oct_bel_mc = 2
+    elif equiv_pitch_oct_bel_mc = 25:
+        simplest_natural_rep_oct_bel_mc = 'x'
+        simplest_flat_rep_oct_bel_mc = 'des'
+        simplest_sharp_rep_oct_bel_mc = 'cis'
+    elif equiv_pitch_oct_bel_mc = 26:
+        simplest_natural_rep_oct_bel_mc = 'd'
+        simplest_flat_rep_oct_bel_mc = 'eeses'
+        simplest_sharp_rep_oct_bel_mc = 'cisis'
+    elif equiv_pitch_oct_bel_mc = 27:
+        simplest_natural_rep_oct_bel_mc = 'x'
+        simplest_flat_rep_oct_bel_mc = 'ees'
+        simplest_sharp_rep_oct_bel_mc = 'dis'
+    elif equiv_pitch_oct_bel_mc = 28:
+        simplest_natural_rep_oct_bel_mc = 'e'
+        simplest_flat_rep_oct_bel_mc = 'fes'
+        simplest_sharp_rep_oct_bel_mc = 'disis'
+    elif equiv_pitch_oct_bel_mc = 29:
+        simplest_natural_rep_oct_bel_mc = 'f'
+        simplest_flat_rep_oct_bel_mc = 'geses'
+        simplest_sharp_rep_oct_bel_mc = 'eis'
+    elif equiv_pitch_oct_bel_mc = 30:
+        simplest_natural_rep_oct_bel_mc = 'x'
+        simplest_flat_rep_oct_bel_mc = 'ges'
+        simplest_sharp_rep_oct_bel_mc = 'fis'
+    elif equiv_pitch_oct_bel_mc = 31:
+        simplest_natural_rep_oct_bel_mc = 'g'
+        simplest_flat_rep_oct_bel_mc = 'aeses'
+        simplest_sharp_rep_oct_bel_mc = 'fisis'
+    elif equiv_pitch_oct_bel_mc = 32:
+        simplest_natural_rep_oct_bel_mc = 'x'
+        simplest_flat_rep_oct_bel_mc = 'aes'
+        simplest_sharp_rep_oct_bel_mc = 'gis'
+    elif equiv_pitch_oct_bel_mc = 33:
+        simplest_natural_rep_oct_bel_mc = 'a'
+        simplest_flat_rep_oct_bel_mc = 'beses'
+        simplest_sharp_rep_oct_bel_mc = 'gisis'
+    elif equiv_pitch_oct_bel_mc = 34:
+        simplest_natural_rep_oct_bel_mc = 'x'
+        simplest_flat_rep_oct_bel_mc = 'bes'
+        simplest_sharp_rep_oct_bel_mc = 'ais'
+    elif equiv_pitch_oct_bel_mc = 35:
+        simplest_natural_rep_oct_bel_mc = 'b'
+        simplest_flat_rep_oct_bel_mc = "ces'"
+        simplest_sharp_rep_oct_bel_mc = 'aisis'
+
+SoFa market--no waiting for a sandwitch, magas mint en, tight short nadrag, kis tight seg
+Academic Coffee--magas asziai lany tight grey nadrag kis kis kis seg!		
+		
+		
+		
+
+def find_note_name(note_num, direction):
+"""
+Quick helper function to return a lilypond note name for a given note_num
+"""
+
+if direction == 'neutral':
+    find_note_name_dict = {0: 'c',
+                           2: 'd',
+                           4: 'e',
+                           5: 'f',
+                           7: 'g',
+                           9: 'a',
+                           11: 'b'}
+elif direction == 'sharp':
+    find_note_name_dict = {0: 'c',
+                           1: 'cis',
+                           2: 'd',
+                           3: 'dis',
+                           4: 'e',
+                           5: 'f',
+                           6: 'fis',
+                           7: 'g',
+                           8: 'gis',
+                           9: 'a',
+                           10: 'ais',
+                           11: 'b'}
+elif direction == 'flat':
+    find_note_name_dict = {0: 'c',
+                           1: 'des',
+                           2: 'd',
+                           3: 'ees',
+                           4: 'e',
+                           5: 'f',
+                           6: 'ges',
+                           7: 'g',
+                           8: 'aes',
+                           9: 'a',
+                           10: 'bes',
+                           11: 'b'}
+						   
+						   
+    def find_note_name(note_num, direction):
+        """
+        Quick helper function to return a lilypond note name for a given note_num
+        """
+        
+        if direction == 'neutral':
+            find_note_name_dict = {0: 'c',
+                                   2: 'd',
+                                   4: 'e',
+                                   5: 'f',
+                                   7: 'g',
+                                   9: 'a',
+                                   11: 'b'}
+        elif direction == 'sharp':
+            find_note_name_dict = {0: 'c',
+                                   1: 'cis',
+                                   2: 'd',
+                                   3: 'dis',
+                                   4: 'e',
+                                   5: 'f',
+                                   6: 'fis',
+                                   7: 'g',
+                                   8: 'gis',
+                                   9: 'a',
+                                   10: 'ais',
+                                   11: 'b'}
+        elif direction == 'flat':
+            find_note_name_dict = {0: 'c',
+                                   1: 'des',
+                                   2: 'd',
+                                   3: 'ees',
+                                   4: 'e',
+                                   5: 'f',
+                                   6: 'ges',
+                                   7: 'g',
+                                   8: 'aes',
+                                   9: 'a',
+                                   10: 'bes',
+                                   11: 'b'}
+        
+        return find_note_name_dict[note_num % 12]
+		
+		
+		
+self._interval = interval
+self._interval_name = interval[:-1]
+self._interval_type = interval[:-1][0]
+self._interval_number = int(interval[:-1][1:])
+self._interval_direction = interval[-1:]		

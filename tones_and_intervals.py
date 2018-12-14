@@ -35,6 +35,7 @@ Once we have these we can use them for
 -Diatonic voice leading like Mick Goodrick
 -Generate diatonic exercise books
 -Do all of this within the compass of a particular voice or instrument
+-Writing out samchillian-style riffs
 
 We incorporate rhythmic patterns such as
 -Different time signatures
@@ -65,7 +66,11 @@ TODO:
 -then time sigunature stuff like that eric demaine essay
 -add an option to expand pitches with enclosures
 -hindustani raga stuff?
--a rendered scale is just a starting note + a scale, then extend that over the whole piano in both direciotns 
+-a rendered scale is just a starting note + a scale, then extend that over the whole piano in both directions
+-implement quartertones? F, Fh#, F#, Ghb, Gb
+-implement overtone series 7th -31 pivot?
+-mick goodrick/dan tepfer voice leading?
+-make the exercise generator an iterator?
 """
 
 
@@ -359,12 +364,12 @@ class interval:
         return self + other.reverse_direction()
     
     
-    def invert(self, wrt=interval('p8+')):
+    #def invert(self, wrt=interval('p8+')):
         """             
         Invert an interval with respect to (wrt) an octave up, or some other
         (positive or negative) distance that we specify.
         """
-        return __sub__(wrt, self)
+     #   return __sub__(wrt, self)
     
 
 
@@ -957,7 +962,7 @@ class pitch:
 
 
 
-
+# encode simplest sharp and flat representations of each pitch
 # in terms of cc_pitch_num
 base_lilypond_octaves = {
     35: ["b", "x", "aisis", "ces'", "x"],
@@ -996,43 +1001,45 @@ def get_attrs(pitch_num):
     # (where the lilypond octave modifier is null)
     equiv_pitch_oct_bel_mc = (pitch_num % 12) + 24
     
-    # get the simplest representations for a given pitch
-    # represent it as locations in the base_lilypond_octaves list
+    # Get the simplest representations for a given pitch
+    # Represent it as locations in the base_lilypond_octaves list
     # simplest natural representation is always 1, so we don't need that
-    if equiv_pitch_oct_bel_mc = 24:
+    # This is essentially lots of data entry to capture the structure of a 
+    # Diatonic octave
+    if equiv_pitch_oct_bel_mc == 24:
         simplest_flat_rep_oct_bel_mc = 4
         simplest_sharp_rep_oct_bel_mc = 1
-    elif equiv_pitch_oct_bel_mc = 25:
+    elif equiv_pitch_oct_bel_mc == 25:
         simplest_flat_rep_oct_bel_mc = 3
         simplest_sharp_rep_oct_bel_mc = 1
-    elif equiv_pitch_oct_bel_mc = 26:
+    elif equiv_pitch_oct_bel_mc == 26:
         simplest_flat_rep_oct_bel_mc = 4
         simplest_sharp_rep_oct_bel_mc = 2
-    elif equiv_pitch_oct_bel_mc = 27:
+    elif equiv_pitch_oct_bel_mc == 27:
         simplest_flat_rep_oct_bel_mc = 3
         simplest_sharp_rep_oct_bel_mc = 1
-    elif equiv_pitch_oct_bel_mc = 28:
+    elif equiv_pitch_oct_bel_mc == 28:
         simplest_flat_rep_oct_bel_mc = 3
         simplest_sharp_rep_oct_bel_mc = 2
-    elif equiv_pitch_oct_bel_mc = 29:
+    elif equiv_pitch_oct_bel_mc == 29:
         simplest_flat_rep_oct_bel_mc = 4
         simplest_sharp_rep_oct_bel_mc = 2
-    elif equiv_pitch_oct_bel_mc = 30:
+    elif equiv_pitch_oct_bel_mc == 30:
         simplest_flat_rep_oct_bel_mc = 3
         simplest_sharp_rep_oct_bel_mc = 1
-    elif equiv_pitch_oct_bel_mc = 31:
+    elif equiv_pitch_oct_bel_mc == 31:
         simplest_flat_rep_oct_bel_mc = 4
         simplest_sharp_rep_oct_bel_mc = 2
-    elif equiv_pitch_oct_bel_mc = 32:
+    elif equiv_pitch_oct_bel_mc == 32:
         simplest_flat_rep_oct_bel_mc = 3
         simplest_sharp_rep_oct_bel_mc = 1
-    elif equiv_pitch_oct_bel_mc = 33:
+    elif equiv_pitch_oct_bel_mc == 33:
         simplest_flat_rep_oct_bel_mc = 4
         simplest_sharp_rep_oct_bel_mc = 2
-    elif equiv_pitch_oct_bel_mc = 34:
+    elif equiv_pitch_oct_bel_mc == 34:
         simplest_flat_rep_oct_bel_mc = 3
         simplest_sharp_rep_oct_bel_mc = 1
-    elif equiv_pitch_oct_bel_mc = 35:
+    elif equiv_pitch_oct_bel_mc == 35:
         simplest_flat_rep_oct_bel_mc = 3
         simplest_sharp_rep_oct_bel_mc = 2
     
@@ -1049,15 +1056,23 @@ def get_attrs(pitch_num):
     
     lilypond_octave_modifier = lilypond_octive_modifier_type*lilypond_octive_modifier_quantity
     
-    # put it all together to get a list of possible lilypond spellings
+    # Put it all together to get a list of possible lilypond spellings
+    # Xs represent nulls, so they don't get modified
     lilypond_spellings = []    
     for item in base_lilypond_octaves[equiv_pitch_oct_bel_mc]:
-        lilypond_spellings.append(item + lilypond_octave_modifier)
+        if item == "x":
+            lilypond_spellings.append(item)
+        elif item != "x":
+            lilypond_spellings.append(item + lilypond_octave_modifier)
+        
+    # Test
+    return lilypond_spellings
+
     
-    # dereference "," (octave lower) and "'" (octave higher) when they're together
+    # dereference "," (octave lower) and "'" (octave higher) when they're together (i.e., '', is equal to ')
     while lilypond_spellings.find("',") > 0:
         location = lilypond_spellings.find("',") 
-        lilypond_spellingst = lilypond_spellings[0:location] + lilypond_spellings[location + 2:]
+        lilypond_spellings = lilypond_spellings[0:location] + lilypond_spellings[location + 2:]
     
     while lilypond_spellings.find(",'") > 0:
         location = lilypond_spellings.find(",'") 
@@ -1067,6 +1082,185 @@ def get_attrs(pitch_num):
     
 
 get_attrs(50)
+# function to derefrence ',',' for a single pitch, apply to all pitches
+# Method to get the hexuple-flat version of the pitch
+
+
+
+
+
+class harmonica_hole:
+    """
+    Implements a harmonica hole. Harmonicas have a given key, and holes relative to that key. An individual
+    harmonica hole has a blow pitch and a draw pitch that are a certain interval relative to each other, and that's
+    all we need to compute its individual properties. Then we can implement a whole harmonica by arranging
+    these holes together, along with the relationship to the individual harmonica pitch.
+    
+    But we don't want to get in to the specifics of the enharmonics at this point--all we need is the number
+    of semitones bewteen the blow pitch and draw pitch (with sign) to do the computation.
+    
+    Richter tuned harmonica example:
+        hole 01: harmonica_hole(2) (C up to D, for example)
+        hole 02: harmonica_hole(3)
+        hole 03: harmonica_hole(4)
+        hole 04: harmonica_hole(2)
+        hole 05: harmonica_hole(2)
+        hole 06: harmonica_hole(2)
+        hole 07: harmonica_hole(-1)
+        hole 08: harmonica_hole(-2)
+        hole 09: harmonica_hole(-2)
+        hole 10: harmonica_hole(-3)
+    
+    So this class just captures the unique playing technique of each hole. We render the exact pitches
+    later when we put these together to construct harmonicas.
+    
+    """
+    
+    def __init__(self, num_semitones):
+        """
+        Pitch numbers for the blow and draw of this hole. Compute note possibilities
+        """
+
+        # A hole is defined by its basic blow note and draw note
+        # Since we're working relatively here, define the basic blow note is 0 semitones, and
+        # the basic draw note is how many semi-tones away
+        self._basic_blow_note = 0 
+        self._basic_draw_note = num_semitones        
+        
+        # Implement basic blow physics
+        # Whether the blow is lower or higher than the draw
+        # For example, holes 1-7 of a Richter-tuned diatonic harmonica are forward, 8-10 are backward
+        # We limit ourselves to standard overblow technique and exclude theoretical possibilities
+        # like quarter-tones and severly bent-up overblows. We'll add bends to this list later in 
+        # the initialization process.
+        self._all_practical_pitches = [self._basic_blow_note] + [self._basic_draw_note]
+        
+        if self._basic_draw_note > 0:
+            self._hole_direction = 'forward'
+            self._draw_bends = [pitch for pitch in range(self._basic_blow_note + 1, self._basic_draw_note)]
+            self._draw_gliss_range = [self._basic_blow_note + 1, self._basic_draw_note]
+            self._overdraw_bend = []
+            self._blow_bends = []
+            self._blow_gliss_range = []
+            self._overblow_bend = num_semitones + 1
+            self._all_practical_pitches += self._draw_bends + [self._overblow_bend]
+            
+        # I'm not actually sure that overbends are null here
+        elif self._basic_draw_note == 0:
+            self._hole_direction = 'neutral'
+            self._draw_bends = []
+            self._draw_gliss_range = []
+            self._overdraw_bend = []
+            self._blow_bends = []
+            self._blow_gliss_range = []
+            self._overblow_bend = []
+            
+        elif self._basic_draw_note < 0:
+            self._hole_direction = 'backward'
+            self._draw_bends = []
+            self._draw_gliss_range = []
+            self._overdraw_bend = num_semitones + 1
+            self._blow_bends = [pitch for pitch in range(self._basic_draw_note + 1, self._basic_blow_note)]
+            self._blow_gliss_range = [self._basic_draw_note + 1, self._basic_blow_note]
+            self._overblow_bend = []
+            self._all_practical_pitches += self._blow_bends + [self._overdraw_bend]
+
+        print(self._all_practical_pitches)
+         
+        self._all_practical_pitches.sort()                                        
+      
+        # Placeholder for theoretical pitches, which could include severly bent-up overbends and glisses
+        # Maybe we'll do quartertones, and near-quartertones later
+        self._all_theoretical_pitches = []
+        
+        # All possible pitches, at least according to our model above
+        self._all_possible_pitches = self._all_practical_pitches + self._all_theoretical_pitches
+        
+        
+
+
+
+class harmonica:
+    """
+    Oooooh, this has to be in terms of intervals
+    How hard is a given tune on a given harmonica?
+    For a given pitch, how easily can it be played (formation, intonation, low overblows are hard, etc.)
+    For any given interval, how easy is it? (breath direction, changing between blowing forms)
+    The 5 of the 1 is the 3 of the 2 thing
+    What's the pitch range, number of holes and ratio of the two?
+    How chromaticly/diatonically oriented is this for arbitrary music? (compare test 12-tone music to diatonic music)
+    How "bluesy" a harmonica is in a given key?
+    Is there some quantitative reason that we can derive why Howard Levy loves Richter tuning?
+    A hypermegametalydian harmonica?
+    
+    The tuning input variable is a dictionary with 
+    hole number: [blow note relative interval, hole structure]
+    
+    We assume that the holes are numbered from 1 on the left to N on the right (physically)
+    In most tunings, the hole 1 blow note corresponds to the "key" of the harmonica
+    Here, for more generality, we merely assume that exactly one of the holes (not necessarily hole 1) 
+    has an interval of 'p1+', and that's the "key" of the harmonica (and root_pitch gets assigned there)
+    
+    """
+    
+    def __init__(self, tuning, root_pitch):
+        
+        # Check assumptions: holes numbered from -M to N, etc.
+        
+        # Initialize tuning        
+        self._tuning = tuning
+        
+        # Loop through keys and find main hole
+        # Loop up and back from that hole assigning absolute pitches
+        # Need to implement pitch class first
+        
+        
+        # Add additional absolute pitch attributes to 
+
+
+
+richter_tuning = {
+1: ['p1+', harmonica_hole(2)],
+2: ['p3+', harmonica_hole(3)],
+3: ['d3+', harmonica_hole(4)],
+4: ['p4+', harmonica_hole(2)],
+5: ['p3+', harmonica_hole(2)],
+6: ['d3+', harmonica_hole(2)],
+7: ['p4+', harmonica_hole(-1)],
+8: ['p3+', harmonica_hole(-2)],
+9: ['d3+', harmonica_hole(-2)],
+10: ['p4+', harmonica_hole(-3)]}
+
+list(richter_tuning.keys())
+
+richter_tuned_harmonica = harmonica(richter_tuning, "c,")
+
+
+# So like (G B) (C E) (E G) (G C) to get a perfect fourth below your single melody octave
+shephards_flute_tuning = {
+1: ['p4-', harmonica_hole(4)],
+2: ['p1+', harmonica_hole(4)],
+3: ['p3+', harmonica_hole(3)],
+4: ['d3+', harmonica_hole(4)]}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
