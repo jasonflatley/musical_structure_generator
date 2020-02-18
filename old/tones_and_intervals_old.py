@@ -1,10 +1,13 @@
 
+
+
+
+
+
+
 """
 I like complex, highly structured melodies and harmonies. I also like everything to be
 spelled enharmonically correctly. 
-
-We proceed as in harmony and voice-leading
-intervals form a group
 
 So I made this package to implement a very general 
 and flexible jazz scale theory that can be used to programmatically generate many different
@@ -17,7 +20,6 @@ pan-diatonic musical structures derived from things like
 -Slonimsky's scales
 -Tonino Miano's whole atonal system
 -Hindustani and Carnatic ragas (what of them fits in our Western system)
--canonic variations
 
 Once we have these we can use them for
 -Basic diatonic structures such as scales, thirds etc
@@ -76,420 +78,24 @@ TODO:
 
 import re
 import math
-import numpy as np
-import pandas as pdf
-
-
-class geninterval:
-    """
-    This class implements the concept of a generalized musical interval in Western equally-tempered tuning.
-    We phrase everything in terms of integer numbers of semi-tones
-    A generalized musical interval is the distance between an implicit base tone and a target tone, with an adjustment.
-    The adjustment is just the number of times it's augmented or diminished, which can be arbitrary.
-    We can derive standard Western music theory by stopping off at all the points in a major scale.
-    But we can use other scales too!
-    
-    Intervals form an abelian group under addition.
-    """
-
-    
-    def __init__(self, distance, adjustment):
-        """
-        Docstring
-        """
-        
-        # The distance and adjustment have to be integer numbers of semi-tones
-        if type(distance) != int:
-            raise ValueError('Interval distance must be an integer number of semi-tones')
-            
-        if type(adjustment) != int:
-            raise ValueError('Interval adjustment must be an integer number of semi-tones')
-        
-        # Define basic parameters
-        self._distance = distance
-        self._adjustment = adjustment
-        
-        # The size is just the total number of semitones, including adjustment
-        self._size = self._distance + self._adjustment
-        
-        # Define the direction of the interval, including adjustment
-        # Note that we can have positive distance, but negative size, as in (2, -3), a triply diminished major 2nd
-        if self._size < 0:
-            self._direction = '-'
-        elif self._size == 0:
-            self._direction = 'u'
-        elif self._size > 0:
-            self._direction = '+'
-            
-    def __len__(self):
-        return self._size
-    
-    def __str__(self):
-        return 'geninterval(' + str(self._distance) + ', ' + str(self._adjustment) + ')'
-        
-    def __repr__(self):
-        return 'geninterval(' + str(self._distance) + ', ' + str(self._adjustment) + ')'
-    
-    def __invert__(self): 
-        # Switch the direction of the interval
-        return geninterval(-1*self._distance, -1*self._adjustment)
-                
-    def __add__(self, other):
-        # Add two intervals by adding the components
-        return geninterval(self._distance + other._distance, self._adjustment + other._adjustment)
-
-    def __sub__(self, other):
-        # Subtract by adding the inverse
-        return self + ~other
-    
-    def reduce(self, equiv_length):
-        # Normally a reduce method here would reduce an interval to the lowest
-        # octave, so reduce(geninterval(13, 0)) = geninterval(1, 0). But we're 
-        # not assuming that an "octave" is 12 semitones here, so we include
-        # the equiv_length parameter.
-        if ~(type(equiv_length) == 'int' and equiv_length > 0):
-            raise ValueError('Transposition amount must be an integer')
-        return geninterval(self._distance % equiv_length, self._adjustment)
-    
-    def transpose(self, transposition):
-        # Transpose the interval by the specified transposition
-        if type(transposition) != 'int':
-            raise ValueError('Transposition amount must be an integer')
-        return geninterval(self._distance + transposition, self._adjustment)
-    
-    def adjust(self, additional_adjustment):
-        # Diminish or augment an interval the specified number of times
-        if type(additional_adjustment) != 'int':
-            raise ValueError('Transposition amount must be an integer')
-        return geninteval(self._distance, self._adjustment + additional_adjustment)
-    
-    def __abs__(self):
-        # Return the equivalent ascending interval
-        if self._direction in ('+', 'u'):
-            return self
-        elif self._direction == ('-'):
-            return ~self
-    
-    def __eq__(self, other):
-        # Here we use mathematical equality so we can order intervals by length
-        # We'll have a separate method for enharmonic inequality, where a 
-        # diminished 3rd isn't the same as an augmented second
-        return self._size == other._size
-    
-    def __ne__(self, other):
-        return not self == other
-    
-    def __lt__(self, other):
-        return self._size < other._size
-    
-    def __le__(self, other):
-        return self._size <= other._size
-    
-    def __gt__(self, other):
-        return self._size > other._size
-    
-    def __ge__(self, other):
-        return self.__size >= other._size
-    
-    def enharm_eq(self, other):
-        # We test theoretical equality, where the distance and adjustment both have to be equal
-        # (This is not the same as enharmonic equality, where two intervals are equal if they're the same size)
-        return self._distance == other._distance and self._adjustment == other._adjustment        
-
-    #def equal_div(self):
-        # Return all equal divisions of the interval
-
-
-#%%
-
-
-a = geninterval(-13, 5)
-b = geninterval(24, 100)
-a > b
-
-
-#%%
-class diatonic_prototype:
-    """
-    Western tonal harmony identifies intervals based on the major scale.
-    The major scale is like the "white notes" on a piano
-    
-    major_scale_prototype = diatonic_prototype([0, 2, 2, 1, 2, 2, 2], 1, ['C', 'D', 'E', 'F', 'G', 'A', 'B'], [0, 5, 7])
-    
-    The arguments are
-    -a list of semi-tone offsets forming the scale degrees
-    -a scale continuation offset
-    -a list of note letter names
-    -a list of "perfect" intervals (that behave differently than regular intervals... 
-                                    here we have perfect unisons, perfect 4ths (5 semitones), 
-                                    and perfect 5ths(7 semitones))
-    
-    But this is not the only possible choice. The diatonic prototype specifies
-    what we mean by "diatonic"
-    It looks similar to a scale (which we define later)
-    """
-    
-    def __init__(self, scale_degrees, continuation_offset, letter_names, perfect_intervals):
-        """
-        Docstring.
-        """
-        
-        # Validate input
-        # TODO
-        # This has to be monotonically non-decreasing, no repeats
-        # all absolute intervals have to be less than the octave 
-        
-        # Initialize basic parameters
-        self._scale_degrees = scale_degrees
-        self._continuation_offset = continuation_offset
-        self._letter_names = letter_names
-        self._perfect_intervals = perfect_intervals
-        
-        # Compute block_size (typically it's an octave)
-        self._block_size = sum(scale_degrees) + continuation_offset
-        
-        # Compute diatonic scale size (typically it's 7 notes)
-        self._diatonic_scale_size = len(self._letter_names)
-        
-        # Compute absolute representation
-        self._absolute_representation = [self._scale_degrees[0]]
-        for i in range(len(self._scale_degrees) - 1):
-            self._absolute_representation.append(self._scale_degrees[i+1] + self._absolute_representation[i])
-        
-        # Compute non-perfect (major/minor intervals) within the octave
-        self._maj_min_intervals = sorted(list(set(self._absolute_representation) - set(self._perfect_intervals)))
-        
-    def __repr__(self):
-        return "diatonic_prototype(" + str(self._scale_degrees) + ", " + str(self._continuation_offset) + ", " + str(self._letter_names) + ", " + str(self._perfect_intervals) + ")"
-    
-
-
-
-
-#%%
-major_scale_prototype = diatonic_prototype([0, 2, 2, 1, 2, 2, 2], 1, ['C', 'D', 'E', 'F', 'G', 'A', 'B'], [0, 4, 5])
-major_scale_prototype._block_size
-
-diatonic_prototype_to_use = major_scale_prototype        
-        
-
-i = 'ddddddd34+'
-d = re.search(r'\d', i).start()
-e = re.search(r'[+-]', i).start()
-
-i[:re.search(r'\d', i).start()]
-i[e:]
-        
-#%%
-class interval():
-    """
-    This is our implementation of a western diatonic interval because it's in terms of 
-    the major_scale_prototype by assumption (we could define more general interval classes also)
-    """
-    
-    prototype = major_scale_prototype
-    
-    def __init__(self, interval):
-        """
-        Class to implement musical intervals. We follow Harmony and Voice Leading
-        
-        The interval parameter is something like p4+, a5+ or d6- to represent
-        a pure fourth up, augmented fifth up, diminished sixth down and such like. We're going 
-        to say there are no double diminished or double augmented intervals (or such like).
-        
-        The key thing we're trying to capture is the function of the note relative to the harmonic
-        context.
-        
-        The last character of the string is either '+' or '-' depending on whether you mean
-        the interval is going up or down. The only thing below that depends on direction is
-        interval addition.
-        
-        Perfect intervals can be diminshed or augmented any number of times.
-        
-        Major intervals can be augmented any number of times. They can become minor,
-        and after that they can be diminished any number of times.
-        
-        We can say things like 'p5+', 'ddddd3+', 'A8-', etc.
-        
-        The numbers here are in terms of diatonic pitches (not semi-tones)
-        """
-        
-        # Make sure interval string is well-formed
-        if not re.match(r'([MmP]|D+|A+)\d+[+-]', interval):
-            raise ValueError('Invalid interval name string: must be ([MmP]|D+|A+)\d+[+-]')
-                
-        # Record this
-        self._interval = interval
-        
-        # Parse the interval string into parts
-        interval_first_number = re.search(r'\d', self._interval).start()
-        interval_direction_index = re.search(r'[+-]', self._interval).start()
-        
-        # The interval without the direction
-        self._interval_name = self._interval[:interval_direction_index]
-        
-        # The interval type (just the letter part)
-        self._interval_type = self._interval[:interval_first_number]
-        
-        # How many letters in the interval type (to capture how many times we diminish/augment)
-        self._interval_type_length = len(self._interval_type)
-        
-        # The interval number (just the number)
-        #print(self._interval[interval_first_number:interval_direction_index])
-        self._interval_number = int(self._interval[interval_first_number:interval_direction_index])
-        
-        # Reduce the interval number with respect to the block size
-        self._interval_number_reduced = self._interval_number % self.prototype._block_size
-        
-        # Map the interval number to Group 1/Group 2
-        if self._interval_number_reduced in self.prototype._perfect_intervals:
-            self._interval_group = 'perfect'
-        elif self._interval_number_reduced not in self.prototype._perfect_intervals:
-            self._interval_group = 'maj/min'
-        else:
-            self._interval_group = 'error'
-        
-        # Need to make sure that Group 1/Group 2 intervals are correctly specified
-        if self._interval_type == 'P' and self._interval_group == 'perfect':
-            pass
-        elif self._interval_type in ['M', 'm'] and self._interval_group == 'maj/min':
-            pass
-        elif self._interval_type[0] in ['d', 'A']:
-            pass
-        else:
-            raise ValueError('Interval type and interval number inconsistent with diatonic prototype')
-            
-        # Compute the chromatic offset. The rules are different for each group
-        if self._interval_group == 'perfect':
-            if self._interval_type == 'P':
-                self._chromatic_offset = 0
-            elif self._interval_type[0] == 'd':
-                self._chromatic_offset = -1*self._interval_type_length
-            elif self._interval_type[0] == 'A':
-                self._chromatic_offset = self._interval_type_length
-            else:
-                self._chromatic_offset = 'error'
-        elif self._interval_group == 'maj/min':
-            if self._interval_type == 'M':
-                self._chromatic_offset = 0
-            elif self._interval_type == 'm':
-                self._chromatic_offset = -1
-            elif self._interval_type[0] == 'd':
-                self._chromatic_offset = -1*(self._interval_type_length + 1)
-            elif self._interval_type[0] == 'A':
-                self._chromatic_offset = self._interval_type_length + 1
-        
-        # The interval direction
-        self._interval_direction = self._interval[-1:]
-        
-        # P1s (unisons) have positive direction by convention
-        if self._interval_direction == '+':
-            self._interval_sign = 1
-        elif self._interval_direction == '-':
-            self._interval_sign = -1
-                      
-        # Reduce diatonically
-        # Normally this is modding by 7, the number of letter names in a diatonic scale
-        self._reduced_diatonic_number = self._interval_number % len(self.prototype._letter_names)
-        self._octave_offset = self._interval_number // len(self.prototype._letter_names)
-        
-        # Compute the underlying non-chromatically adjusted number of semitones
-        # using the octave prototype.
-        self._reduced_semitones = self.prototype._absolute_representation[self._reduced_diatonic_number - 1]
-        self._semitones_unadj = self._reduced_semitones + self.prototype._block_size * self._octave_offset
-
-        # Form the underlying unreduced and reduced generalized intervals
-        if self._interval_direction == '+':
-            self._geninterval = geninterval(self._semitones_unadj, self._chromatic_offset)
-            self._geninterval_reduced = geninterval(self._reduced_semitones, self._chromatic_offset)
-        elif self._interval_direction == '-':
-            self._geninterval = ~geninterval(self._semitones_unadj, self._chromatic_offset)
-            self._geninterval_reduced = ~geninterval(self._reduced_semitones, self._chromatic_offset)
-     
-    def __repr__(self):
-        return "interval(" + self._interval + ")"
-    
-    def reduce(self):
-        return interval(self._interval_type + str(self._reduced_diatonic_number) + self._interval_direction)
-
-
-
-#%%
-    
-asdf = interval('P4+')
-
-intervals_to_test = []
-parameters_to_test = []
-
-
-#%%
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-###################################################################################
-
-
-
-
-
-
-
-
 
 # Translates diatonic intervals within one octave into the corresponding number of semi-tones
 # We'll say there's no such thing as d1 or d8 (diminished unison or diminished octave)
 diatonic_to_num_semitones = {
-    'p1': 0,
+'p1': 0,
 'a1': 1,
 'd2': 1,
 'p2': 2,
 'a2': 3,
-    'i3': 3,
-    'm3': 4,
-    'd4': 4,
-    'a3': 5,
-    'p4': 5,
-    'a4': 6,
-    'd5': 6,
-    'p5': 7,
-    'a5': 8,
+'d3': 3,
+'p3': 4,
+'d4': 4,
+'a3': 5,
+'p4': 5,
+'a4': 6,
+'d5': 6,
+'p5': 7,
+'a5': 8,
 'd6': 8,
 'p6': 9,
 'a6': 10,
@@ -565,7 +171,6 @@ def semitones_to_diasteps(num_semitones):
     elif num_semitones >= 0:
         new_direction = '+'
     
-    # Account for numbers higher than 12 (one octave)
     base_num_semitones = raw_num_semitones % 12
     octave_offset = raw_num_semitones // 12
     
@@ -577,7 +182,6 @@ def semitones_to_diasteps(num_semitones):
         if base_num_semitones in dictionary_to_use:
             base_diatonic_interval = dictionary_to_use[base_num_semitones]
             new_interval_number = int(base_diatonic_interval[1:]) + 7*octave_offset
-            print('new_interval_number is ' + str(interval(interval_type + str(new_interval_number) + new_direction)))
             possible_results.append(interval(interval_type + str(new_interval_number) + new_direction))
         else:
             pass
@@ -588,26 +192,9 @@ def semitones_to_diasteps(num_semitones):
     process_interval_type_case('d', num_semitones_to_diminished)
 
     return possible_results
-semitones_to_diasteps(11)
-11 // 12
-"""
-interval('d8+') problem: this doesn't exist' because this below looks up 'd1'
-self._base_length = diatonic_to_num_semitones[self._reduced_interval_name]
-"""
 
-def dereference_diasteps_output(list_of_ints, target_num):
-    """
-    We need to be able to dereference a multivalued list of intervals from 
-    semitones_to_diasteps. Usually we do this by choosing what degree of the
-    scale we're talking about. We implement that here via target_num
-    """
-    for i in range(len(list_of_ints)):
-        if list_of_ints[i]._interval_number == target_num:
-            return list_of_ints[i]
-        
-    # if we found nothing
-    raise ValueError("No interval with that number can be found")
-    
+
+
 
 
 class interval:
@@ -771,7 +358,6 @@ class interval:
         
         # Use the non-class function to compute all allowable interval representations for the number
         # of semitones we computed.
-        print(new_num_semitones)
         return semitones_to_diasteps(new_num_semitones)
     
     
@@ -793,7 +379,7 @@ class interval:
         return interval(reduced_interval_string)
     
     
-    def invert(self, wrt):
+    def invert(self, wrt=interval('p8+')):
         """             
         Invert an interval with respect to (wrt) an octave up, or some other
         (positive or negative) distance that we specify.
@@ -926,9 +512,6 @@ class interval:
         
 
 #%%
-            
-interval('p2+') + interval('p6+')        
-        
 a = interval('p4+')
 b = interval('p4-')
 #abs(b)
@@ -1271,7 +854,7 @@ class scale:
         """
         Take relative scale representation. For example:
             
-            c_ionian = scale(['p1+', 'p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+', [1, 2, 3, 4, 5, 6, 7, 8])
+            ionian_scale = scale(['p1+', 'p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+', diatonic_sc_degs) XXXXXXXXXXXXXX fix this example!
             
         Return a list of intervals where each interval gives the relationship of the note to the root, not the previous note:
             
@@ -1287,33 +870,15 @@ class scale:
         # Loop through the remaining intervals and add them to the previous interval.
         # Dereference multivariate values against the degree list!
         for i in range(len(self._scale_steps[1:])):
-            print(self._scale_steps[i+1])
-            print(absolute_scale[i])
-            possib_multiv_interval = self._scale_steps[i+1] + absolute_scale[i]
-            print(possib_multiv_interval)
-            print(self._degree_list[i+1])
-            print("\n")
-            deref_possib_multiv_interval = dereference_diasteps_output(possib_multiv_interval, self._degree_list[i+1])
-            absolute_scale.append(deref_possib_multiv_interval)
-            
-        print(absolute_scale)
-
-            
+            ### implement this
+            # absolute_scale.append(absolute_scale[-1])
+        
+        
  
-#%%      
-
-c_ionian = scale(['p1+', 'p2+', 'p2+', 'd2+', 'p2+', 'p2+', 'p2+'], 'd2+', [1, 2, 3, 4, 5, 6, 7, 8])
-c_ionian.absolute_scale_repr()  
-
-
-          
-#iss = scale(['p2+', 'p2+', 'd3+', 'p2+', 'p2+'], 'd3+', [2, 3, 5, 6, 7, 9])
+#%%        
+iss = scale(['p2+', 'p2+', 'd3+', 'p2+', 'p2+'], 'd3+', [2, 3, 5, 6, 7, 9])
 #iss.absolute_scale_repr()
-#iss._degree_list
-
-#iss = scale(['p2+', 'p2+', 'd3+', 'p2+', 'p2+'], 'd3+', [2, 3, 5, 6, 7, 9])
-#iss.absolute_scale_repr()
-#iss._degree_list
+iss._degree_list
 
 #%%       
    
