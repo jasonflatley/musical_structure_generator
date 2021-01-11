@@ -1,4 +1,29 @@
 
+
+"""
+ideas for generalization
+define letter names/codes for number of pitches in a generalized octave
+everything follows from there
+
+abcdefg for ionian diatonic
+
+maybe intervals follow from "prototypical scale" like C ionian, and you have 'p2', 'p3', ... for pure/perfect
+then each interval can be augmented/diminished an arbitrary number of times
+unison is a p1. "+" is default so you can leave it out
+can have different prototypical scales. You could have melodic minor-centric western harmony where c-eb is a "p3" and c-e is an "a3"
+atonal music can be chromatic-scale centric
+figure out how to express whatever xenharmonic system. western equally tempered should fall out of this
+maybe use scala/.kbd files
+generalize chorales/voice leading/counterpoint?
+should it accomodate the WAMatthieu derivation of just intonation? So in a just intonation system, the frequencies
+are computed on the fly based on the diatonic intervals?
+
+arbitrary octave length
+some rule for assigning frequency to pitch (like 19TET or whatever)
+
+"""
+
+
 """
 I like complex, highly structured melodies and harmonies. I also like everything to be
 spelled enharmonically correctly. 
